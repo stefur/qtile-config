@@ -1,520 +1,477 @@
 # -*- coding: utf-8 -*-
-# stefur config
-
 """
  TO DO
-- Rewrite color and appss to dict (maybe)
-- Figure out why custom layout icon path is not working (using the default path atm)
-- Set up the wifi widget for signal strength and icon,
-- Define more stuff such as wifi interface for easier configuration
+- Set up the wifi widget for signal strength and icon
+- Multi screen actions, maybe.
+- Follow only URLs and nothing else. Smart setting not working the way I want.
+- Spotify NowPlaying widget doesn't pick up songs playing in the event of Qtile restart. Low prio.
 """
-
-from libqtile.config import Key, Screen, Group, Drag, Click, Match
-from libqtile.lazy import lazy
-from libqtile import layout, bar, widget, hook, qtile
-from typing import List  # noqa: F401
-
 import os
 import re
 import subprocess
 
-import dbus
-from dbus.mainloop.glib import DBusGMainLoop
-from libqtile.widget import base
-
-import iwlib
-
 from datetime import date
+import fontawesome as fa
+import iwlib
+import netifaces as ni
 
-# My home
+from libqtile.config import Key, Screen, Group, Drag, Click, Match, EzKey, KeyChord
+from libqtile.lazy import lazy
+from libqtile import layout, bar, widget, hook, qtile
+from libqtile.utils import send_notification
 
-home = os.path.expanduser('~/')
+from battery import CustomBattery
+from spotify import NowPlaying
+from volume import VolumeCtrl
+from colors import colors
 
-# Mod key = Super key
+home = os.path.expanduser('~')
 
-mod = "mod4"
+MOD = 'mod4'
 
-# Applications for launch shortcuts etc
+modifier_keys = {
+        'M': 'mod4',
+        'A': 'mod1',
+        'C': 'control',
+        'S': 'shift',
+}
 
-terminal = "termite"
-browser = "firefox"
-chat = "signal-desktop -- %u"
-passwords = "keepassxc"
-launcher = "rofi -no-lazy-grab -show drun -modi drun -theme " + home + ".config/rofi/style_launcher"
-switcher = "rofi -show window -modi window -theme " + home + ".config/rofi/style_switcher"
-file_manager = "pcmanfm"
-music_player = "spotify"
-mail = "thunderbird"
+find_wifi_interface = re.compile('^wlp.')
 
-# Colors and fonts
+NETWORK_INTERFACE = list(filter(find_wifi_interface.match, ni.interfaces()))[0]
+TERMINAL = 'alacritty'
+BROWSER = 'firefox'
+CHAT = 'signal-desktop'
+LAUNCHER = ''.join(['rofi -no-lazy-grab -show drun -modi drun -theme ', home, \
+        '/.config/rofi/style_launcher'])
+SWITCHER = ''.join(['rofi -show window -modi window -theme ', home, \
+        '/.config/rofi/style_switcher'])
+FILE_MANAGER = 'pcmanfm'
+MUSIC_PLAYER = 'spotify'
+MAIL = 'claws-mail'
+MUSIC_CTRL = ('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify '
+            '/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.')
 
-col_main        = "#339966"   # Main color, for borders on active window and workspaces, currently green
-col_secondary   = "#626a66"   # Secondary color, for inactive window borders, currently dark green
-col_background  = "#222222"   # All backgrounds, for example bars and widgets, currently dark gray
-col_text        = "#ffffff"   # All text, for readability currently white
-col_selected    = "#434758"   # Selected workspace background, blueish shade of dark gray
-col_urgent      = "#993932"   # All urgent borders and text, currently pale red
 
-text_font       = "Source Sans Pro SemiBold" # Used for widgets mainly
-icon_font       = "Font Awesome 5 Free Solid" # Used for workspace icons
+group_assignments = {
+    '1': ['Navigator'],
+    '2': ['valheim.x86_64', 'battle.net.exe', 'wowclassic.exe', 'ck3', 'paradox launcher'],
+    '3': ['claws-mail', 'discord', 'signal'],
+    '4': ['spotify'],
+    '5': ['Steam'],
+}
 
-# Hook to start my stuff
+steam_game = re.compile('^steam_app_.')
+volume_level = re.compile(r'\[(\d?\d?\d?)%\]')
 
 @hook.subscribe.startup_once
 def autostart():
-    subprocess.call(home + ".config/startup.sh")
+    """Autostart things from my script when qtile starts"""
+    subprocess.call(''.join([home, '/.local/bin/startup']))
 
-# Workspace assigned to wm_classes
+@hook.subscribe.float_change
+def center_window():
+    """Centers all the floating windows"""
+    client = qtile.current_window
+    if not client.floating:
+        return
 
-workspace = {
-    "1":  ["Navigator", "Firefox",
-           "navigator", "firefox", ],
-    "2": ["steam_app_", "valheim.x86_64", "battle.net.exe"],
-    "3": ["Signal", "Thunderbird", "Discord",
-          "signal", "Mail", "discord"],
-    "4": ["Spotify", "spotify"],
-    "5": ["Steam", "steam"],
-}
+    screen_rect = qtile.current_screen.get_rect()
 
-# Hook to launch app in assigned workspace
+    center_x = screen_rect.x + screen_rect.width / 2
+    center_y = screen_rect.y + screen_rect.height / 2
+
+    x_pos = center_x - client.width / 2
+    y_pos = center_y - client.height / 2
+
+    # don't go off the right...
+    x_pos = min(x_pos, screen_rect.x + screen_rect.width - client.width)
+    # or left...
+    x_pos = max(x_pos, screen_rect.x)
+    # or bottom...
+    y_pos = min(y_pos, screen_rect.y + screen_rect.height - client.height)
+    # or top
+    y_pos = max(y_pos, screen_rect.y)
+
+    client.x = int(round(x_pos))
+    client.y = int(round(y_pos))
+    qtile.current_group.layout_all()
 
 @hook.subscribe.client_new
 def assign_app_group(client):
-    wm_class = client.window.get_wm_class()[0]
-    steam_app = re.search("^steam_app_.", wm_class) # Special handling of steam games, I want all of them on workspace 2
-    if steam_app:
-        client.togroup("2")
-    else:
-        for i in range(len(workspace)):
-            if wm_class in list(workspace.values())[i]:
-                group = list(workspace.keys())[i]
-                client.togroup(group)
-
-# Function to only run apps that are not already running
-
-def check_if_running(app):
-    def cmd(qtile):
-       try:
-           subprocess.check_output(['pgrep ' + app], shell=True)
-       except:
-            qtile.cmd_spawn(app)
-    return cmd
-
-# Some Spotify controls to add PlayPause / Next / Previous
-
-music_ctrl = ("dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify "
-             "/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.")
-
-# A custom widget to show what Spotify is playing, based on mpris2
-
-class SpotifyPlaying(base._TextBox):
-    def __init__(self, **config):
-        base._TextBox.__init__(self, **config)
-        dbus_loop = DBusGMainLoop()
-        bus = dbus.SessionBus(mainloop=dbus_loop)
-        bus.add_signal_receiver(self.update, 'PropertiesChanged',
-            'org.freedesktop.DBus.Properties', 'org.mpris.MediaPlayer2.spotify',
-            '/org/mpris/MediaPlayer2')
-
-        bus.add_signal_receiver(self.clear, 'NameOwnerChanged', 'org.freedesktop.DBus',
-            None, '/org/freedesktop/DBus', arg0="org.mpris.MediaPlayer2.spotify")
-
-    def clear(self, name, old_owner, new_owner):
-        if name == "org.mpris.MediaPlayer2.spotify":
-            if old_owner:
-                self.text = ''
-                self.bar.draw()
-
-    def update(self, interface_name, changed_properties, invalidated_properties):
-        self.displaytext = 'testtext'
-        self.display_metadata = ['xesam:artist', 'xesam:title']
-        self.statussymbol = ''
-        metadata = None
-        playbackstatus = None
-        metadata = changed_properties.get('Metadata')
-        playbackstatus = changed_properties.get('PlaybackStatus')
-
-        if metadata:
-            self.displaytext = ' - '.join([metadata.get(x)
-                if isinstance(metadata.get(x), dbus.String)
-                else ' + '.join([y for y in metadata.get(x)
-                if isinstance(y, dbus.String)])
-                for x in self.display_metadata if metadata.get(x)])
-            self.displaytext.replace('\n', '')
-            if len(self.displaytext) > 35:
-                self.displaytext = self.displaytext[:35]
-                self.displaytext += ' ...'
-                if ('(' in self.displaytext) and (')' not in self.displaytext):
-                    self.displaytext += ')'
-
-        if playbackstatus:
-            if playbackstatus == 'Paused':
-                self.statussymbol = '<span foreground="' + col_main + '"></span>  '
-            elif playbackstatus == 'Playing':
-                self.statussymbol = '<span foreground="' + col_main + '"></span>  '
-
-        self.text = self.statussymbol + self.displaytext
-        self.bar.draw()
-
-# Function to get todays date and current week, then send it as a notification. Used for mouse callback on clock widget
-
-def notify_date():
-    notify_interface = dbus.Interface(
-        object=dbus.SessionBus().get_object("org.freedesktop.Notifications",
-                                            "/org/freedesktop/Notifications"),
-        dbus_interface="org.freedesktop.Notifications")
-
-    notification  = notify_interface.Notify("Date", 0, "",
-    str(date.today()),"Week " + str(date.today().isocalendar()[1]), [], {"urgency": 1}, 10000)
-
-    return notification
-
-# Function to get the wifi signal strength, then send it as a notification. Used for mouse callback on wifi widget. Temp solution until I cba to make a custom widget
-
-def notify_wifi():
+    """Decides which apps go where when they are launched"""
 
     try:
-        interface = iwlib.get_iwconfig('wlp7s0')
-        quality = interface['stats']['quality']
-        signal = round((quality / 70)*100)
+        wm_class = client.window.get_wm_class()[0]
 
-    except:
-        signal = "Disconnected"
+        if steam_game.search(wm_class): # I want all steam games on workspace 2
+            client.togroup('2')
+        else:
+            group = list(k for k, v in group_assignments.items() if wm_class in v)[0]
+            client.togroup(group)
 
-    notify_interface = dbus.Interface(object=dbus.SessionBus().get_object("org.freedesktop.Notifications",
-                                        "/org/freedesktop/Notifications"), dbus_interface="org.freedesktop.Notifications")
-
-    notification = notify_interface.Notify("Wifi signal", 0, "",
-     "{}%".format(signal), "", [], {"urgency": 1}, 10000)
-
-# Custom volume function, since I don't want to poll alsa all the time but rather get the volume upon change
-
-class Vol(base._TextBox):
-
-    def __init__(self, **config):
-        base._TextBox.__init__(self, **config)
-
-        self.add_callbacks({
-            'Button1': self.cmd_mute,
-            'Button4': self.cmd_increase_vol,
-            'Button5': self.cmd_decrease_vol,
-        })
-
-        vol = self.get_volume()
-
-        if vol == 0:
-            self.text = ""
-        elif  vol <= 30:
-            self.text = ""
-        elif vol > 80:
-            self.text = ""
-        elif vol > 30:
-            self.text = ""
-
-    def get_volume(self):
-        try:
-            vol = subprocess.check_output(["amixer sget Master"], shell=True).decode('utf-8')
-
-            if re.search("off", vol):
-                vol = 0
-
-            else:
-                vol = re.compile(r'\[(\d?\d?\d?)%\]').search(vol)
-                vol = int(vol.groups()[0])
-
-        except:
-            vol = "Is alsamixer installed?"
-
-        return vol
-
-    def icon(self):
-        vol = self.get_volume()
-
-        if vol == 0:
-            self.text = ""
-        elif vol <= 30:
-            self.text = ""
-        elif vol > 70:
-            self.text = ""
-        elif vol > 30:
-            self.text = ""
-
-        self.bar.draw()
-        return self.text
-
-    def cmd_increase_vol(self):
-            subprocess.call(['amixer -q sset Master 2%+'], shell=True)
-            vol = self.get_volume()
-            self.text = '{}%'.format(vol)
-            self.bar.draw()
-            self.timeout_add(3, self.icon)
-
-    def cmd_decrease_vol(self):
-            subprocess.call(['amixer -q sset Master 2%-'], shell=True)
-            vol = self.get_volume()
-            self.text = '{}%'.format(vol)
-            self.bar.draw()
-            self.timeout_add(3, self.icon)
-
-    def cmd_mute(self):
-            subprocess.call(['amixer -q sset Master toggle'], shell=True)
-            vol = self.get_volume()
-            self.text = self.icon()
-            self.bar.draw()
-
-# Hook to fallback to the first group with windows available when the last window of a group is killed
-
-@hook.subscribe.client_killed
-def fallback(window):
-    if window.group.windows != {window}:
+    except IndexError:
         return
 
-    for group in qtile.groups:
-        if group.windows:
-            qtile.current_screen.toggle_group(group)
+@hook.subscribe.client_name_updated
+def spotify_handle(client):
+    """Push Spotify to correct group since it's wm_class setting is slow"""
+
+    try:
+        if client.window.get_wm_class()[0] == "spotify":
+            client.togroup('4')
+        else:
             return
-    qtile.current_screen.toggle_group(qtile.groups[0])
+
+    except IndexError:
+        return
+
+def check_if_running(app):
+    """Check if the app being launched is already running, if so do nothing"""
+    def run_cmd(qtile_cmd):
+        """Run the subprocess check and raise app if it's running"""
+        if qtile_cmd:
+            try:
+
+                # First a "temporary" fix to catch Signal and Steam
+                if app == 'signal-desktop':
+                    app_wmclass = 'signal'
+                elif app == 'steam-native':
+                    app_wmclass = 'steam'
+                else:
+                    app_wmclass = app
+
+                subprocess.check_output([''.join(['pgrep -f ', app_wmclass])], shell=True)
+
+                subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], check=True, shell=True)
+            except subprocess.CalledProcessError:
+                qtile.cmd_spawn(app)
+        else:
+            return
+    return run_cmd
+
+def notification(request):
+    """Used for mouse callbacks from widgets to send notifications"""
+    if request == 'wifi':
+        try:
+            interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
+            quality = interface['stats']['quality']
+            quality = interface['stats']['quality']
+            quality = round((quality / 70)*100)
+            ssid = interface['ESSID']
+            title = "Wifi"
+            message = "".join(
+                [str(ssid, encoding = 'utf-8'), "\nSignal strength: {}%".format(quality)])
+
+        except KeyError:
+            title = "Disconnected"
+            message = ""
+
+    elif request == 'date':
+        todaysdate = date.today()
+        weekday = todaysdate.strftime("%A")
+        title =  "".join([str(todaysdate), " (", str(weekday),")"])
+        message = "".join(["Week ", str(date.today().isocalendar()[1])])
+
+    elif request == 'battery':
+        title = "Battery status"
+        message = str(subprocess.check_output(
+            ["acpi"],
+            shell=True), encoding = 'utf-8')
+
+    elif request == 'volume':
+        vol = subprocess.check_output(['amixer sget Master'], shell = True).decode('utf-8')
+
+        if re.search('off', vol):
+            vol = 0
+        else:
+            vol = volume_level.search(vol)
+            vol = int(vol.groups()[0])
+
+        title = "Volume level"
+        message = "{}%".format(vol)
+
+    return send_notification(title, message, timeout = 2000, urgent = False)
 
 # Keybinds
-
 keys = [
+        # Switch focus between windows
+        EzKey('M-<Down>', lazy.layout.down()),
+        EzKey('M-<Up>', lazy.layout.up()),
+        EzKey('M-<Left>', lazy.layout.left()),
+        EzKey('M-<Right>', lazy.layout.right()),
 
-# Switch between windows
+        # Move windows between left/right columns or move up/down in current stack
+        EzKey('M-S-<Left>', lazy.layout.swap_left()),
+        EzKey('M-S-<Right>', lazy.layout.swap_right()),
+        EzKey('M-S-<Down>', lazy.layout.shuffle_down()),
+        EzKey('M-S-<Up>', lazy.layout.shuffle_up()),
 
-    Key([mod], "Left", lazy.layout.left(), desc="Move focus to left"),
-    Key([mod], "Right", lazy.layout.right(), desc="Move focus to right"),
-    Key([mod], "Down", lazy.layout.down(), desc="Move focus down"),
-    Key([mod], "Up", lazy.layout.up(), desc="Move focus up"),
+        # Grow/shrink windows
+        EzKey('M-C-<Left>', lazy.layout.shrink_main()),
+        EzKey('M-C-<Right>', lazy.layout.grow_main()),
+        EzKey('M-C-<Down>', lazy.layout.shrink()),
+        EzKey('M-C-<Up>', lazy.layout.grow()),
 
+        # Various window controls
+        EzKey('M-n', lazy.layout.reset()),
+        EzKey('M-f', lazy.window.toggle_fullscreen()),
+        EzKey('M-q', lazy.window.kill()),
+        EzKey('M-S-f', lazy.window.toggle_floating()),
+        EzKey('M-<space>', lazy.next_layout()),
+        EzKey('M-S-<space>', lazy.layout.flip()),
+        EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
+        EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
+        EzKey('M-S-b', lazy.hide_show_bar()),
 
-# Move windows between left/right columns or move up/down in current stack
+        # Some app shortcuts
+        EzKey('M-b', lazy.function(check_if_running(BROWSER))),
+        EzKey('M-<Return>', lazy.spawn(TERMINAL)),
+        EzKey('M-S-<Return>', lazy.spawn(FILE_MANAGER)),
+        EzKey('M-r', lazy.spawn(LAUNCHER)),
+        EzKey('M-d', lazy.function(check_if_running('discord'))),
+        EzKey('M-s', lazy.function(check_if_running(MUSIC_PLAYER))),
+        EzKey('M-g', lazy.function(check_if_running('steam-native'))),
+        EzKey('M-c', lazy.function(check_if_running(CHAT))),
+        EzKey('M-m', lazy.function(check_if_running(MAIL))),
+        EzKey('M-p', lazy.spawn('passmenu')),
 
-    Key([mod, "shift"], "Left", lazy.layout.shuffle_left()),
-    Key([mod, "shift"], "Right", lazy.layout.shuffle_right()),
-    Key([mod, "shift"], "Down", lazy.layout.shuffle_down()),
-    Key([mod, "shift"], "Up", lazy.layout.shuffle_up()),
+        # KeyChords for some special actions
+        KeyChord([MOD], 'k', [
+            EzKey('c', lazy.spawn('rofi-confedit')),
+            EzKey('q', lazy.spawn('alacritty -e vim .config/qtile/')),
+            EzKey('u', lazy.spawn('alacritty -e yay -Syu')),
+            EzKey('l', lazy.spawn('alacritty -e bat .local/share/qtile/qtile.log')),
+        ]),
 
-# Grow/shrink windows
+        # Spotify controls, lacking real media keys :(
+        EzKey('M-8', lazy.spawn(''.join([MUSIC_CTRL, 'PlayPause']))),
+        EzKey('M-9', lazy.spawn(''.join([MUSIC_CTRL, 'Next']))),
+        EzKey('M-7', lazy.spawn(''.join([MUSIC_CTRL, 'Previous']))),
 
-    Key([mod, "control"], "Left", lazy.layout.shrink(),
-                                  lazy.layout.grow_left(),
-                                  lazy.layout.increase_nmaster()),
-    Key([mod, "control"], "Right", lazy.layout.grow(),
-                                   lazy.layout.grow_right(),
-                                   lazy.layout.decrease_nmaster()),
-    Key([mod, "control"], "Down", lazy.layout.grow_down()),
-    Key([mod, "control"], "Up", lazy.layout.grow_up()),
+        # Media volume keys, if available
+        EzKey('<XF86AudioMute>', lazy.widget['volumectrl'].mute()),
+        EzKey('<XF86AudioLowerVolume>', lazy.widget['volumectrl'].decrease_vol()),
+        EzKey('<XF86AudioRaiseVolume>', lazy.widget['volumectrl'].increase_vol()),
 
-# Various window controls
+        # System controls
+        EzKey('M-l', lazy.spawn(''.join([home, '.local/bin/lock']))),
+        EzKey('M-C-r', lazy.restart()),
+        EzKey('M-C-q', lazy.shutdown()),
+        EzKey('M-C-<Escape>', lazy.spawn('poweroff')),
 
-    Key([mod], "n", lazy.layout.normalize()),
-    Key([mod], "f", lazy.window.toggle_fullscreen()),
-    Key([mod], "q", lazy.window.kill()),
-    Key([mod, "shift"], "f", lazy.window.toggle_floating()),
-    Key([mod], "space", lazy.next_layout()),
-    Key([mod], "Tab", lazy.spawn(switcher)),
-    Key([], "Print", lazy.spawn("scrot")),
+    ]
+# Groups
+group_settings = [
+        ('1', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+        ('2', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+        ('3', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+        ('4', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+        ('5', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+        ('6', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+    ]
 
-# Some app shortcuts
-
-    Key([mod], "b", lazy.function(check_if_running(browser)), lazy.group["1"].toscreen(toggle=False)),
-    Key([mod], "Return", lazy.spawn(terminal)),
-    Key([mod, "shift"], "Return", lazy.spawn(file_manager)),
-    Key([mod], "d", lazy.spawn(launcher)),
-    Key([mod], "m", lazy.function(check_if_running(music_player)), lazy.group["4"].toscreen(toggle=False)),
-    Key([mod], "g", lazy.spawn("steam-native"), lazy.group["5"].toscreen(toggle=False)),
-    Key([mod], "c", lazy.function(check_if_running(chat)), lazy.group["3"].toscreen(toggle=False)),
-    Key([mod], "k", lazy.spawn(passwords)),
-    Key([mod], "t", lazy.spawn(mail), lazy.group["3"].toscreen(toggle=False)),
-
-# Spotify controls, lacking real media keys
-
-    Key(["control"], "8", lazy.spawn(music_ctrl + "PlayPause")),
-    Key(["control"], "9", lazy.spawn(music_ctrl + "Next")),
-    Key(["control"], "7", lazy.spawn(music_ctrl + "Previous")),
-
-# System controls
-
-    Key([mod, "control"], "r", lazy.restart()),
-    Key([mod, "control"], "q", lazy.shutdown()),
-    Key([mod, "control"], "Escape", lazy.spawn("poweroff")),
-]
-
-# Names, labels and layout for each group
-
-groups = []
-group_names = ["1", "2", "3", "4", "5", "6", "7", "8"]
-group_labels = ["", "", "", "", "", "", "", ""]
-group_layouts = ["monadtall", "max", "columns", "monadtall", "monadtall", "monadtall", "monadtall", "monadtall"]
-
-for i in range(len(group_names)):
-    groups.append(
-        Group(name=group_names[i], label=group_labels[i], layout=group_layouts[i])
-    )
+groups = [Group(name, **kwargs) for name, kwargs in group_settings]
 
 for i in groups:
     keys.extend([
-        Key([mod], i.name, lazy.group[i.name].toscreen()),
-        Key([mod, "shift"], i.name, lazy.window.togroup(i.name)),
+    Key([MOD], i.name, lazy.group[i.name].toscreen()),
+    Key([MOD, 'shift'], i.name, lazy.window.togroup(i.name)),
     ])
 
-# Default settings for all layouts
-
-layout_theme = {"border_width": 1,
-                "border_focus": col_main,
-                "border_normal": col_secondary,
-                }
-
-# Layouts I use
+# Layouts
+layout_theme = {
+        'border_width': 2,
+        'border_focus': colors['main'],
+        'border_normal': colors['separator'],
+        }
 
 layouts = [
-    layout.MonadTall(
-                    **layout_theme,
-                    ratio = 0.65,
-                    single_border_width = 0
-    ),
-    layout.Columns(**layout_theme),
-    layout.Max(**layout_theme),
-]
+        layout.MonadTall(
+        **layout_theme,
+        single_border_width = 0
+        ),
+        layout.MonadWide(
+        **layout_theme,
+        single_border_width = 0
+        )
+        ]
 
-# Widgets
+floating_layout = layout.Floating(float_rules=[
+      *layout.Floating.default_float_rules,
+      Match(wm_class='Nm-connection-editor'),
+      Match(wm_class='pinentry-gtk-2'),
+      Match(wm_class='Lxappearance'),
+      Match(wm_class='Xfce4-taskmanager'),
+      Match(wm_class='VirtualBox Manager'),
+      Match(wm_class='pavucontrol'),
+      Match(title='Confirm File Replacing') # This is to float the copy/replace dialog of Pcmanfm
+    ],
+    **layout_theme)
 
+# Mouse
+mouse = [
+        Drag([MOD], 'Button1', lazy.window.set_position_floating(),
+            start=lazy.window.get_position()),
+        Drag([MOD], 'Button3', lazy.window.set_size_floating(),
+            start=lazy.window.get_size()),
+        Click([MOD], 'Button2', lazy.window.toggle_floating())
+        ]
+
+# Widgets & extension defaults
 widget_defaults = dict(
-    font = text_font,
-    fontsize = 14,
-    background = col_background,
-    foreground = col_text
-)
+        font = 'Source Sans Pro Semibold',
+        fontsize = 15,
+        background = colors['background'],
+        foreground = colors['text']
+        )
 
 extension_defaults = widget_defaults.copy()
 
-def init_widgets_list():
-    widgets_list = [
-            widget.CurrentLayoutIcon(
-                custom_icon_paths = ["$HOME/.config/qtile/icons/"],
-                foreground = col_text,
-                background = col_main,
-                padding = 3,
-                scale = 0.5
+# Widgets
+widgets = [
+#            widget.CurrentLayoutIcon(
+#                custom_icon_paths = [''.join([home, '/.config/qtile/icons/'])],
+#                foreground = colors['text'],
+#                background = colors['main'],
+#                padding = 3,
+#                scale = 0.5
+#                ),
+            widget.Sep(
+                padding = 8,
+                foreground = colors['background'],
                 ),
             widget.GroupBox(
-                font = icon_font,
-                margin_y = 3,
                 margin_x = 0,
-                hide_unused = True,
+                fontsize = 14,
+                hide_unused = False,
                 disable_drag = True,
-                padding_y = 5,
-                padding_x = 8,
-                borderwidth = 2,
-                active = col_text,
-                inactive = col_text,
+                padding = 8,
+                borderwidth = 0,
+                active = colors['text'],
+                inactive = colors['secondary'],
                 rounded = False,
-                highlight_color = col_selected,
-                highlight_method = "line",
-                this_current_screen_border = col_main,
-                this_screen_border = col_secondary,
-                foreground = col_text,
-                urgent_alert_method = "line",
-                urgent_border = col_urgent
+                highlight_color = colors['background'],
+                highlight_method = 'text',
+                this_current_screen_border = colors['main'],
+                this_screen_border = colors['main'],
+                foreground = colors['text'],
+                urgent_alert_method = 'text',
+                urgent_text = colors['urgent']
+                ),
+            widget.Sep(
+                padding = 22,
+                size_percent = 100,
+                linewidth = 2,
+                foreground = colors['separator']
+                ),
+            widget.Sep(
+                padding = 8,
+                foreground = colors['background']
+                ),
+            widget.TextBox(
+                text = fa.icons['arrow-circle-right'],
+                foreground = colors['main'],
+                padding = 0
+                ),
+            widget.WindowName(
+                max_chars = 50,
+                empty_group_string = "Desktop",
                 ),
             widget.Spacer(
                 length = bar.STRETCH,
                 ),
-            SpotifyPlaying(
-                mouse_callbacks = {'Button1': lambda: qtile.cmd_spawn(music_ctrl + "PlayPause")}
-               ),
-            widget.Sep(
-                padding = 4,
-                foreground = col_background
-                ),
-              widget.TextBox(
-                text='',
-                padding = 0,
-                fontsize = 72,
-                foreground = col_main
-                ),
-            Vol(
-                background = col_main,
-                padding = 0
+            NowPlaying(
+                mouse_callbacks = {'Button1': lambda: qtile.cmd_spawn(''.join([MUSIC_CTRL, \
+                                                'PlayPause'])),
+                                   'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "s")}
                 ),
             widget.Sep(
-                foreground = col_main,
-                background = col_main,
-                padding = 2
+                padding = 8,
+                foreground = colors['background']
+                ),
+            widget.TextBox(
+                text = "  " + fa.icons['circle'],
+                padding= -14,
+                fontsize = 37,
+                foreground = colors['main']
                 ),
             widget.Systray(
-                padding = 12,
-                icon_size = 17,
-                background = col_main,
+                padding = 14,
+                background = colors['main']
                 ),
             widget.Sep(
-                foreground = col_main,
-                background = col_main,
-                padding = 12
+                foreground = colors['main'],
+                background = colors['main'],
+                padding = 16
+                ),
+            VolumeCtrl(
+                background = colors['main'],
+                padding = 0,
+                mouse_callbacks={'Button3': lambda: lazy.function(notification('volume'))},
+                ),
+            widget.Sep(
+                foreground = colors['main'],
+                background = colors['main'],
+                padding = 16
                 ),
             widget.Wlan(
-                format = ' ',
-                interface = 'wlp7s0',
-                disconnected_message = '',
-                background = col_main,
+                format = fa.icons['wifi'],
+                interface = NETWORK_INTERFACE,
+                disconnected_message = fa.icons['times'],
+                background = colors['main'],
                 update_interval = 7,
                 padding = 0,
-                mouse_callbacks={"Button1": lambda: qtile.cmd_spawn(terminal + " -e nmtui"),
-                                 "Button3": lambda: lazy.function(notify_wifi())}
+                mouse_callbacks={'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL, \
+                                            ' -e nmtui'])),
+                                 'Button1': lambda: lazy.function(notification('wifi'))}
                 ),
             widget.Sep(
-                foreground = col_main,
-                background = col_main,
-                padding = 10
+                foreground = colors['main'],
+                background = colors['main'],
+                padding = 16
                 ),
             widget.Clock(
-                foreground = col_text,
-                background = col_main,
-                format = "%H:%M",
+                foreground = colors['text'],
+                background = colors['main'],
+                format = '%H:%M',
                 padding = 0,
-                mouse_callbacks = {'Button1': lambda: lazy.function(notify_date())}
+                mouse_callbacks = {'Button1': lambda: lazy.function(notification('date'))}
                 ),
             widget.Sep(
                 padding = 10,
-                foreground = col_main,
-                background = col_main
+                foreground = colors['main'],
+                background = colors['main']
                 )
-    ]
+        ]
 
-    return widgets_list
+# Check if the computer is a laptop basically, and if it is add battery widget
+if os.path.isfile('/usr/bin/acpi'):
+    widgets.insert(-2, CustomBattery(
+        padding = 0,
+        background = colors['main'],
+        low_foreground = colors['urgent'],
+        mouse_callbacks = {'Button1': lambda: lazy.function(notification('battery'))}
+        ))
+    widgets.insert(-2, widget.Sep(
+        foreground = colors['main'],
+        background = colors['main'],
+        padding = 14
+        ))
 
-# The bar
+# Bar
+bar = bar.Bar(widgets=widgets, size = 32)
 
-screens = [Screen(top=bar.Bar(widgets=init_widgets_list(), opacity=1.0, size=25))]
-
-mouse = [
-    Drag([mod], "Button1", lazy.window.set_position_floating(),
-         start=lazy.window.get_position()),
-    Drag([mod], "Button3", lazy.window.set_size_floating(),
-         start=lazy.window.get_size()),
-    Click([mod], "Button2", lazy.window.toggle_floating())
-]
-
-# Floating things
-
-floating_layout = layout.Floating(float_rules=[
-    *layout.Floating.default_float_rules,
-    Match(wm_class='Nm-connection-editor'),
-    Match(wm_class='Lxappearance'),
-    Match(wm_class='Xfce4-taskmanager'),
-    Match(title='Confirm File Replacing') # This is to float only copy/replace window of Pcmanfm
-],
-**layout_theme)
+# Screens
+screens = [Screen(top=bar)]
 
 dgroups_key_binder = None
 dgroups_app_rules = []
 follow_mouse_focus = True
 bring_front_click = True
 cursor_warp = False
+reconfigure_screens = True
 auto_fullscreen = True
-focus_on_window_activation = "smart"
-main = None
-
-# Switch wmname in case it is necessary. LG3D that happens to be on java's whitelist.
-# wmname = "LG3D"
-wmname = "Qtile"
+auto_minimize = True
+focus_on_window_activation = 'smart'
+wmname = "LG3D"
