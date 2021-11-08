@@ -2,7 +2,6 @@
 """
  TO DO
 - Set up the wifi widget for signal strength and icon
-- Multi screen actions, maybe.
 - Follow only URLs and nothing else. Smart setting not working the way I want.
 - Spotify NowPlaying widget doesn't pick up songs playing in the event of Qtile restart. Low prio.
 """
@@ -15,7 +14,7 @@ import fontawesome as fa
 import iwlib
 import netifaces as ni
 
-from libqtile.config import Key, Screen, Group, Drag, Click, Match, EzKey, KeyChord
+from libqtile.config import Key, Screen, Group, Drag, Click, Match, EzKey, KeyChord, ScratchPad, DropDown
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
@@ -24,8 +23,6 @@ from battery import CustomBattery
 from spotify import NowPlaying
 from volume import VolumeCtrl
 from colors import colors
-
-home = os.path.expanduser('~')
 
 MOD = 'mod4'
 
@@ -42,16 +39,13 @@ NETWORK_INTERFACE = list(filter(find_wifi_interface.match, ni.interfaces()))[0]
 TERMINAL = 'alacritty'
 BROWSER = 'firefox'
 CHAT = 'signal-desktop'
-LAUNCHER = ''.join(['rofi -no-lazy-grab -show drun -modi drun -theme ', home, \
-        '/.config/rofi/style_launcher'])
-SWITCHER = ''.join(['rofi -show window -modi window -theme ', home, \
-        '/.config/rofi/style_switcher'])
+LAUNCHER = 'rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher'
+SWITCHER = 'rofi -show window -modi window -theme ~/.config/rofi/style_switcher'
 FILE_MANAGER = 'pcmanfm'
 MUSIC_PLAYER = 'spotify'
 MAIL = 'claws-mail'
 MUSIC_CTRL = ('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify '
             '/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.')
-
 
 group_assignments = {
     '1': ['Navigator'],
@@ -67,13 +61,22 @@ volume_level = re.compile(r'\[(\d?\d?\d?)%\]')
 @hook.subscribe.startup_once
 def autostart():
     """Autostart things from my script when qtile starts"""
-    subprocess.call(''.join([home, '/.local/bin/startup']))
+    subprocess.call('startup')
+
+@hook.subscribe.client_urgent_hint_changed
+def follow_links(client):
+    """If Firefox changes urgency hint go to it, focus_on_window_activation must be set to urgent"""
+    if client.window.get_wm_class()[0] == "Navigator":
+        subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check=True, shell=True)
+    else:
+        return
 
 @hook.subscribe.float_change
 def center_window():
     """Centers all the floating windows"""
     client = qtile.current_window
-    if not client.floating:
+
+    if not client.floating or client.fullscreen: # Don't center if not floating or fullscreen
         return
 
     screen_rect = qtile.current_screen.get_rect()
@@ -104,17 +107,17 @@ def assign_app_group(client):
     try:
         wm_class = client.window.get_wm_class()[0]
 
-        if steam_game.search(wm_class): # I want all steam games on workspace 2
-            client.togroup('2')
-        else:
-            group = list(k for k, v in group_assignments.items() if wm_class in v)[0]
-            client.togroup(group)
+#        if steam_game.search(wm_class): # I want all steam games on workspace 2
+#            client.togroup('2')
+#        else:
+        group = list(k for k, v in group_assignments.items() if wm_class in v)[0]
+        client.togroup(group)
 
     except IndexError:
         return
 
 @hook.subscribe.client_name_updated
-def spotify_handle(client):
+def push_spotify(client):
     """Push Spotify to correct group since it's wm_class setting is slow"""
 
     try:
@@ -126,11 +129,25 @@ def spotify_handle(client):
     except IndexError:
         return
 
-def check_if_running(app):
+@hook.subscribe.client_killed
+def fallback_default_layout(*args):
+    """Reset a workspace to default layout when theres is only one window left"""
+    try:
+        win_count = len(qtile.current_group.windows)
+
+    except AttributeError:
+        win_count = 0
+
+    if win_count > 2:
+        return
+
+    qtile.cmd_to_layout_index(0)
+
+def run_or_raise(app):
     """Check if the app being launched is already running, if so do nothing"""
-    def run_cmd(qtile_cmd):
+    def run_cmd(qtile):
         """Run the subprocess check and raise app if it's running"""
-        if qtile_cmd:
+        if qtile:
             try:
 
                 # First a "temporary" fix to catch Signal and Steam
@@ -144,6 +161,7 @@ def check_if_running(app):
                 subprocess.check_output([''.join(['pgrep -f ', app_wmclass])], shell=True)
 
                 subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], check=True, shell=True)
+
             except subprocess.CalledProcessError:
                 qtile.cmd_spawn(app)
         else:
@@ -156,7 +174,6 @@ def notification(request):
         try:
             interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
             quality = interface['stats']['quality']
-            quality = interface['stats']['quality']
             quality = round((quality / 70)*100)
             ssid = interface['ESSID']
             title = "Wifi"
@@ -168,8 +185,9 @@ def notification(request):
             message = ""
 
     elif request == 'date':
-        todaysdate = date.today()
-        weekday = todaysdate.strftime("%A")
+        today = date.today()
+        todaysdate = today.strftime("%-d %B")
+        weekday = today.strftime("%A")
         title =  "".join([str(todaysdate), " (", str(weekday),")"])
         message = "".join(["Week ", str(date.today().isocalendar()[1])])
 
@@ -191,7 +209,55 @@ def notification(request):
         title = "Volume level"
         message = "{}%".format(vol)
 
-    return send_notification(title, message, timeout = 2000, urgent = False)
+    return send_notification(title, message, timeout = 2500, urgent = False)
+
+def toggle_microphone():
+    """Run the toggle command and then send notification to report status of microphone"""
+    def _toggle_microphone(qtile):
+        if qtile:
+            subprocess.call(['amixer set Capture toggle'], shell=True)
+
+            message = subprocess.check_output(['amixer sget Capture'], shell=True).decode('utf-8')
+
+            if re.search('off', message):
+                message = "Muted"
+
+            elif re.search('on', message):
+                message = "Unmuted"
+
+            title = "Microphone"
+
+            send_notification(title, message, timeout = 2500, urgent = False)
+
+        else:
+            return
+
+    return _toggle_microphone
+
+def toggle_max_layout(qtile):
+    """Basically trying to achieve a 'monocle' toggle of the focused window"""
+    current_layout = qtile.current_group.layout.name
+
+    if current_layout == "monadtall":
+        qtile.cmd_to_layout_index(1)
+
+    elif current_layout == "max":
+        qtile.cmd_to_layout_index(0)
+
+def toggle_wide_layout(qtile):
+    """Toggle between monadtall and monadwide layout"""
+    current_layout = qtile.current_group.layout.name
+
+    if current_layout == "monadtall":
+        qtile.cmd_to_layout_index(2)
+
+    elif current_layout == "monadwide":
+        qtile.cmd_to_layout_index(0)
+
+def toggle_screen(qtile):
+    """Move to next screen, and warp the mouse there as well"""
+    qtile.cmd_next_screen()
+    qtile.warp_to_screen()
 
 # Keybinds
 keys = [
@@ -213,49 +279,59 @@ keys = [
         EzKey('M-C-<Down>', lazy.layout.shrink()),
         EzKey('M-C-<Up>', lazy.layout.grow()),
 
+        # Basically a focus toggle if two screens
+        EzKey('M-a', lazy.function(toggle_screen)),
+
         # Various window controls
+        EzKey('M-S-c', lazy.window.kill()),
         EzKey('M-n', lazy.layout.reset()),
+        EzKey('M-m', lazy.function(toggle_max_layout)),
+        EzKey('M-c', lazy.function(center_window)),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
-        EzKey('M-q', lazy.window.kill()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
-        EzKey('M-<space>', lazy.next_layout()),
         EzKey('M-S-<space>', lazy.layout.flip()),
+        EzKey('M-<space>', lazy.function(toggle_wide_layout)),
         EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
         EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
         EzKey('M-S-b', lazy.hide_show_bar()),
 
         # Some app shortcuts
-        EzKey('M-b', lazy.function(check_if_running(BROWSER))),
+        EzKey('M-b', lazy.function(run_or_raise(BROWSER))),
         EzKey('M-<Return>', lazy.spawn(TERMINAL)),
-        EzKey('M-S-<Return>', lazy.spawn(FILE_MANAGER)),
+        EzKey('M-C-<Return>', lazy.spawn(FILE_MANAGER)),
+        EzKey('M-c', lazy.function(run_or_raise(CHAT))),
         EzKey('M-r', lazy.spawn(LAUNCHER)),
-        EzKey('M-d', lazy.function(check_if_running('discord'))),
-        EzKey('M-s', lazy.function(check_if_running(MUSIC_PLAYER))),
-        EzKey('M-g', lazy.function(check_if_running('steam-native'))),
-        EzKey('M-c', lazy.function(check_if_running(CHAT))),
-        EzKey('M-m', lazy.function(check_if_running(MAIL))),
+        EzKey('M-d', lazy.function(run_or_raise('discord'))),
+        EzKey('M-s', lazy.function(run_or_raise(MUSIC_PLAYER))),
+        EzKey('M-g', lazy.function(run_or_raise('steam-native'))),
         EzKey('M-p', lazy.spawn('passmenu')),
 
         # KeyChords for some special actions
         KeyChord([MOD], 'k', [
             EzKey('c', lazy.spawn('rofi-confedit')),
-            EzKey('q', lazy.spawn('alacritty -e vim .config/qtile/')),
+            EzKey('q', lazy.spawn('alacritty -e vim ~/.config/qtile/')),
             EzKey('u', lazy.spawn('alacritty -e yay -Syu')),
-            EzKey('l', lazy.spawn('alacritty -e bat .local/share/qtile/qtile.log')),
+            EzKey('m', lazy.function(run_or_raise(MAIL))),
         ]),
 
-        # Spotify controls, lacking real media keys :(
+        # ScratchPad terminal
+        EzKey('M-S-<Return>', lazy.group['scratchpad'].dropdown_toggle('term')),
+
+        # Spotify controls, lacking real media keys on 65% keyboard
         EzKey('M-8', lazy.spawn(''.join([MUSIC_CTRL, 'PlayPause']))),
         EzKey('M-9', lazy.spawn(''.join([MUSIC_CTRL, 'Next']))),
         EzKey('M-7', lazy.spawn(''.join([MUSIC_CTRL, 'Previous']))),
 
-        # Media volume keys, if available
+        # Media volume keys
         EzKey('<XF86AudioMute>', lazy.widget['volumectrl'].mute()),
         EzKey('<XF86AudioLowerVolume>', lazy.widget['volumectrl'].decrease_vol()),
         EzKey('<XF86AudioRaiseVolume>', lazy.widget['volumectrl'].increase_vol()),
 
+        # Microphone toggle muted/unmuted
+        EzKey('M-q', lazy.function(toggle_microphone())),
+
         # System controls
-        EzKey('M-l', lazy.spawn(''.join([home, '.local/bin/lock']))),
+        EzKey('M-l', lazy.spawn('lock')),
         EzKey('M-C-r', lazy.restart()),
         EzKey('M-C-q', lazy.shutdown()),
         EzKey('M-C-<Escape>', lazy.spawn('poweroff')),
@@ -279,6 +355,14 @@ for i in groups:
     Key([MOD, 'shift'], i.name, lazy.window.togroup(i.name)),
     ])
 
+# ScratchPad
+groups.append(ScratchPad('scratchpad', [
+        DropDown('term', TERMINAL,
+        warp_pointer = False,
+        height = 0.6,
+        y = 0.2)
+        ]))
+
 # Layouts
 layout_theme = {
         'border_width': 2,
@@ -290,6 +374,8 @@ layouts = [
         layout.MonadTall(
         **layout_theme,
         single_border_width = 0
+        ),
+        layout.Max(
         ),
         layout.MonadWide(
         **layout_theme,
@@ -330,13 +416,14 @@ extension_defaults = widget_defaults.copy()
 
 # Widgets
 widgets = [
-#            widget.CurrentLayoutIcon(
-#                custom_icon_paths = [''.join([home, '/.config/qtile/icons/'])],
-#                foreground = colors['text'],
-#                background = colors['main'],
-#                padding = 3,
-#                scale = 0.5
-#                ),
+            widget.CurrentLayoutIcon(
+                custom_icon_paths = ['~/.config/qtile/icons/'],
+                foreground = colors['text'],
+                background = colors['main'],
+                padding = 3,
+                scale = 0.5,
+                mouse_callbacks = {'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "Up")}
+                ),
             widget.Sep(
                 padding = 8,
                 foreground = colors['background'],
@@ -359,11 +446,11 @@ widgets = [
                 urgent_alert_method = 'text',
                 urgent_text = colors['urgent']
                 ),
-            widget.Sep(
-                padding = 22,
-                size_percent = 100,
-                linewidth = 2,
-                foreground = colors['separator']
+            widget.TextBox(
+                padding = 8,
+                foreground = colors['separator'],
+                fontsize = 18,
+                text = "|"
                 ),
             widget.Sep(
                 padding = 8,
@@ -386,15 +473,12 @@ widgets = [
                                                 'PlayPause'])),
                                    'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "s")}
                 ),
-            widget.Sep(
-                padding = 8,
-                foreground = colors['background']
-                ),
             widget.TextBox(
-                text = "  " + fa.icons['circle'],
-                padding= -14,
-                fontsize = 37,
-                foreground = colors['main']
+                text = "◤", # DejaVu font
+                fontsize = 72,
+                padding = -3,
+                background = colors['main'],
+                foreground = colors['background']
                 ),
             widget.Systray(
                 padding = 14,
@@ -436,7 +520,9 @@ widgets = [
                 background = colors['main'],
                 format = '%H:%M',
                 padding = 0,
-                mouse_callbacks = {'Button1': lambda: lazy.function(notification('date'))}
+                mouse_callbacks = {'Button1': lambda: lazy.function(notification('date')),
+                'Button3': lambda: qtile.cmd_spawn('python -m webbrowser https://kalender.se')
+                }
                 ),
             widget.Sep(
                 padding = 10,
@@ -445,12 +531,11 @@ widgets = [
                 )
         ]
 
-# Check if the computer is a laptop basically, and if it is add battery widget
+# Check if the computer is a laptop, and if it is add battery widget
 if os.path.isfile('/usr/bin/acpi'):
     widgets.insert(-2, CustomBattery(
         padding = 0,
         background = colors['main'],
-        low_foreground = colors['urgent'],
         mouse_callbacks = {'Button1': lambda: lazy.function(notification('battery'))}
         ))
     widgets.insert(-2, widget.Sep(
@@ -473,5 +558,5 @@ cursor_warp = False
 reconfigure_screens = True
 auto_fullscreen = True
 auto_minimize = True
-focus_on_window_activation = 'smart'
+focus_on_window_activation = 'urgent'
 wmname = "LG3D"
