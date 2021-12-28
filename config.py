@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
- TO DO
-- Set up the wifi widget for signal strength and icon
-- Follow only URLs and nothing else. Smart setting not working the way I want.
-- Spotify NowPlaying widget doesn't pick up songs playing in the event of Qtile restart. Low prio.
-"""
+"""My qtile config"""
+
 import os
 import re
 import subprocess
@@ -14,7 +10,8 @@ import fontawesome as fa
 import iwlib
 import netifaces as ni
 
-from libqtile.config import Key, Screen, Group, Drag, Click, Match, EzKey, KeyChord, ScratchPad, DropDown
+from libqtile.config import Key, Screen, Group, Drag, Click, \
+                            Match, EzKey, KeyChord, ScratchPad, DropDown
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
@@ -33,17 +30,16 @@ modifier_keys = {
         'S': 'shift',
 }
 
-find_wifi_interface = re.compile('^wlp.')
+wifi_interface = re.compile('^wlp.|^wlan.')
+steam_game = re.compile('^steam_app_.')
+volume_level = re.compile(r'\[(\d?\d?\d?)%\]')
 
-NETWORK_INTERFACE = list(filter(find_wifi_interface.match, ni.interfaces()))[0]
+NETWORK_INTERFACE = list(filter(wifi_interface.match, ni.interfaces()))[0]
 TERMINAL = 'alacritty'
 BROWSER = 'firefox'
-CHAT = 'signal-desktop'
 LAUNCHER = 'rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher'
 SWITCHER = 'rofi -show window -modi window -theme ~/.config/rofi/style_switcher'
 FILE_MANAGER = 'pcmanfm'
-MUSIC_PLAYER = 'spotify'
-MAIL = 'claws-mail'
 MUSIC_CTRL = ('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify '
             '/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.')
 
@@ -55,19 +51,17 @@ group_assignments = {
     '5': ['Steam'],
 }
 
-steam_game = re.compile('^steam_app_.')
-volume_level = re.compile(r'\[(\d?\d?\d?)%\]')
-
 @hook.subscribe.startup_once
 def autostart():
-    """Autostart things from my script when qtile starts"""
-    subprocess.call('startup')
+    """Autostart things from script when qtile starts"""
+    with subprocess.Popen("startup", shell = True) as process:
+        hook.subscribe.shutdown(process.terminate)
 
 @hook.subscribe.client_urgent_hint_changed
 def follow_links(client):
     """If Firefox changes urgency hint go to it, focus_on_window_activation must be set to urgent"""
     if client.window.get_wm_class()[0] == "Navigator":
-        subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check=True, shell=True)
+        subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check = True, shell = True)
     else:
         return
 
@@ -87,13 +81,9 @@ def center_window():
     x_pos = center_x - client.width / 2
     y_pos = center_y - client.height / 2
 
-    # don't go off the right...
     x_pos = min(x_pos, screen_rect.x + screen_rect.width - client.width)
-    # or left...
     x_pos = max(x_pos, screen_rect.x)
-    # or bottom...
     y_pos = min(y_pos, screen_rect.y + screen_rect.height - client.height)
-    # or top
     y_pos = max(y_pos, screen_rect.y)
 
     client.x = int(round(x_pos))
@@ -107,11 +97,11 @@ def assign_app_group(client):
     try:
         wm_class = client.window.get_wm_class()[0]
 
-#        if steam_game.search(wm_class): # I want all steam games on workspace 2
-#            client.togroup('2')
-#        else:
-        group = list(k for k, v in group_assignments.items() if wm_class in v)[0]
-        client.togroup(group)
+        if steam_game.search(wm_class): # I want all steam games on workspace 2
+            client.togroup('2')
+        else:
+            group = list(k for k, v in group_assignments.items() if wm_class in v)[0]
+            client.togroup(group)
 
     except IndexError:
         return
@@ -149,7 +139,6 @@ def run_or_raise(app):
         """Run the subprocess check and raise app if it's running"""
         if qtile:
             try:
-
                 # First a "temporary" fix to catch Signal and Steam
                 if app == 'signal-desktop':
                     app_wmclass = 'signal'
@@ -158,9 +147,9 @@ def run_or_raise(app):
                 else:
                     app_wmclass = app
 
-                subprocess.check_output([''.join(['pgrep -f ', app_wmclass])], shell=True)
+                subprocess.check_output([''.join(['pgrep -f ', app_wmclass])], shell = True)
 
-                subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], check=True, shell=True)
+                subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], check = True, shell = True)
 
             except subprocess.CalledProcessError:
                 qtile.cmd_spawn(app)
@@ -170,54 +159,46 @@ def run_or_raise(app):
 
 def notification(request):
     """Used for mouse callbacks from widgets to send notifications"""
-    if request == 'wifi':
-        try:
-            interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
-            quality = interface['stats']['quality']
-            quality = round((quality / 70)*100)
-            ssid = interface['ESSID']
-            title = "Wifi"
-            message = "".join(
-                [str(ssid, encoding = 'utf-8'), "\nSignal strength: {}%".format(quality)])
+    def _notification(qtile):
+        """Also used for key combination shortcuts"""
+        if request == 'wifi':
+            try:
+                interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
+                quality = interface['stats']['quality']
+                quality = round((quality / 70)*100)
+                ssid = interface['ESSID']
+                title = "Wifi"
+                message = "".join(
+                    [str(ssid, encoding = 'utf-8'), "\nSignal strength: {}%".format(quality)])
 
-        except KeyError:
-            title = "Disconnected"
-            message = ""
+            except KeyError:
+                title = "Disconnected"
+                message = ""
 
-    elif request == 'date':
-        today = date.today()
-        todaysdate = today.strftime("%-d %B")
-        weekday = today.strftime("%A")
-        title =  "".join([str(todaysdate), " (", str(weekday),")"])
-        message = "".join(["Week ", str(date.today().isocalendar()[1])])
+        elif request == 'date':
+            today = date.today()
+            todaysdate = today.strftime("%-d %B")
+            weekday = today.strftime("%A")
+            title =  "".join([str(todaysdate), " (", str(weekday),")"])
+            message = "".join(["Week ", str(date.today().isocalendar()[1])])
 
-    elif request == 'battery':
-        title = "Battery status"
-        message = str(subprocess.check_output(
-            ["acpi"],
-            shell=True), encoding = 'utf-8')
+        elif request == 'battery':
+            title = "Battery status"
+            message = str(subprocess.check_output(
+                ["acpi"],
+                shell = True), encoding = 'utf-8')
 
-    elif request == 'volume':
-        vol = subprocess.check_output(['amixer sget Master'], shell = True).decode('utf-8')
-
-        if re.search('off', vol):
-            vol = 0
-        else:
-            vol = volume_level.search(vol)
-            vol = int(vol.groups()[0])
-
-        title = "Volume level"
-        message = "{}%".format(vol)
-
-    return send_notification(title, message, timeout = 2500, urgent = False)
+        return send_notification(title, message, timeout = 2500, urgent = False)
+    
+    return _notification
 
 def toggle_microphone():
     """Run the toggle command and then send notification to report status of microphone"""
     def _toggle_microphone(qtile):
         if qtile:
-            subprocess.call(['amixer set Capture toggle'], shell=True)
+            subprocess.call(['amixer set Capture toggle'], shell = True)
 
-            message = subprocess.check_output(['amixer sget Capture'], shell=True).decode('utf-8')
+            message = subprocess.check_output(['amixer sget Capture'], shell = True).decode('utf-8')
 
             if re.search('off', message):
                 message = "Muted"
@@ -238,20 +219,10 @@ def toggle_max_layout(qtile):
     """Basically trying to achieve a 'monocle' toggle of the focused window"""
     current_layout = qtile.current_group.layout.name
 
-    if current_layout == "monadtall":
+    if current_layout == "[]=":
         qtile.cmd_to_layout_index(1)
 
-    elif current_layout == "max":
-        qtile.cmd_to_layout_index(0)
-
-def toggle_wide_layout(qtile):
-    """Toggle between monadtall and monadwide layout"""
-    current_layout = qtile.current_group.layout.name
-
-    if current_layout == "monadtall":
-        qtile.cmd_to_layout_index(2)
-
-    elif current_layout == "monadwide":
+    elif current_layout == "[M]":
         qtile.cmd_to_layout_index(0)
 
 def toggle_screen(qtile):
@@ -285,24 +256,29 @@ keys = [
         # Various window controls
         EzKey('M-S-c', lazy.window.kill()),
         EzKey('M-n', lazy.layout.reset()),
-        EzKey('M-m', lazy.function(toggle_max_layout)),
+        EzKey('M-<space>', lazy.function(toggle_max_layout)),
         EzKey('M-c', lazy.function(center_window)),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
         EzKey('M-S-<space>', lazy.layout.flip()),
-        EzKey('M-<space>', lazy.function(toggle_wide_layout)),
         EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
         EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
-        EzKey('M-S-b', lazy.hide_show_bar()),
+        EzKey('M-b', lazy.hide_show_bar()),
+
+        # Notification commands
+        EzKey('M-S-b', lazy.function(notification('battery'))),
+        EzKey('M-S-d', lazy.function(notification('date'))),
+        EzKey('M-S-w', lazy.function(notification('wifi'))),
+
 
         # Some app shortcuts
-        EzKey('M-b', lazy.function(run_or_raise(BROWSER))),
+        EzKey('M-w', lazy.function(run_or_raise(BROWSER))),
         EzKey('M-<Return>', lazy.spawn(TERMINAL)),
         EzKey('M-C-<Return>', lazy.spawn(FILE_MANAGER)),
-        EzKey('M-c', lazy.function(run_or_raise(CHAT))),
+        EzKey('M-c', lazy.function(run_or_raise('signal-desktop'))),
         EzKey('M-r', lazy.spawn(LAUNCHER)),
         EzKey('M-d', lazy.function(run_or_raise('discord'))),
-        EzKey('M-s', lazy.function(run_or_raise(MUSIC_PLAYER))),
+        EzKey('M-s', lazy.function(run_or_raise('spotify'))),
         EzKey('M-g', lazy.function(run_or_raise('steam-native'))),
         EzKey('M-p', lazy.spawn('passmenu')),
 
@@ -311,7 +287,6 @@ keys = [
             EzKey('c', lazy.spawn('rofi-confedit')),
             EzKey('q', lazy.spawn('alacritty -e vim ~/.config/qtile/')),
             EzKey('u', lazy.spawn('alacritty -e yay -Syu')),
-            EzKey('m', lazy.function(run_or_raise(MAIL))),
         ]),
 
         # ScratchPad terminal
@@ -332,26 +307,27 @@ keys = [
 
         # System controls
         EzKey('M-l', lazy.spawn('lock')),
+        EzKey('M-S-r', lazy.reload_config()),
         EzKey('M-C-r', lazy.restart()),
-        EzKey('M-C-q', lazy.shutdown()),
+        EzKey('M-S-q', lazy.shutdown()),
         EzKey('M-C-<Escape>', lazy.spawn('poweroff')),
 
     ]
 # Groups
 group_settings = [
-        ('1', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
-        ('2', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
-        ('3', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
-        ('4', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
-        ('5', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
-        ('6', {'label': fa.icons['circle'], 'layout': 'monadtall'}),
+        ('1', {'label': "1", 'layout': 'monadtall'}),
+        ('2', {'label': "2", 'layout': 'monadtall'}),
+        ('3', {'label': "3", 'layout': 'monadtall'}),
+        ('4', {'label': "4", 'layout': 'monadtall'}),
+        ('5', {'label': "5", 'layout': 'monadtall'}),
+        ('6', {'label': "6", 'layout': 'monadtall'}),
     ]
 
 groups = [Group(name, **kwargs) for name, kwargs in group_settings]
 
 for i in groups:
     keys.extend([
-    Key([MOD], i.name, lazy.group[i.name].toscreen()),
+    Key([MOD], i.name, lazy.group[i.name].toscreen(toggle=True)),
     Key([MOD, 'shift'], i.name, lazy.window.togroup(i.name)),
     ])
 
@@ -373,13 +349,11 @@ layout_theme = {
 layouts = [
         layout.MonadTall(
         **layout_theme,
-        single_border_width = 0
+        single_border_width = 0,
+        name = "[]=", 
         ),
         layout.Max(
-        ),
-        layout.MonadWide(
-        **layout_theme,
-        single_border_width = 0
+        name = "[M]"
         )
         ]
 
@@ -406,8 +380,8 @@ mouse = [
 
 # Widgets & extension defaults
 widget_defaults = dict(
-        font = 'Source Sans Pro Semibold',
-        fontsize = 15,
+        font = 'FiraCode Nerd Font',
+        fontsize = 13,
         background = colors['background'],
         foreground = colors['text']
         )
@@ -416,23 +390,15 @@ extension_defaults = widget_defaults.copy()
 
 # Widgets
 widgets = [
-            widget.CurrentLayoutIcon(
-                custom_icon_paths = ['~/.config/qtile/icons/'],
-                foreground = colors['text'],
-                background = colors['main'],
-                padding = 3,
-                scale = 0.5,
-                mouse_callbacks = {'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "Up")}
-                ),
             widget.Sep(
-                padding = 8,
+                padding = 2,
                 foreground = colors['background'],
                 ),
             widget.GroupBox(
                 margin_x = 0,
-                fontsize = 14,
                 hide_unused = False,
                 disable_drag = True,
+                use_mouse_wheel = False,
                 padding = 8,
                 borderwidth = 0,
                 active = colors['text'],
@@ -449,18 +415,13 @@ widgets = [
             widget.TextBox(
                 padding = 8,
                 foreground = colors['separator'],
-                fontsize = 18,
+                fontsize = 12,
                 text = "|"
                 ),
-            widget.Sep(
+            widget.CurrentLayout(
                 padding = 8,
-                foreground = colors['background']
-                ),
-            widget.TextBox(
-                text = fa.icons['arrow-circle-right'],
-                foreground = colors['main'],
-                padding = 0
-                ),
+                foreground = colors['main']
+            ),
             widget.WindowName(
                 max_chars = 50,
                 empty_group_string = "Desktop",
@@ -473,83 +434,98 @@ widgets = [
                                                 'PlayPause'])),
                                    'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "s")}
                 ),
-            widget.TextBox(
-                text = "◤", # DejaVu font
-                fontsize = 72,
-                padding = -3,
-                background = colors['main'],
-                foreground = colors['background']
-                ),
             widget.Systray(
                 padding = 14,
-                background = colors['main']
+                background = colors['background']
                 ),
             widget.Sep(
+                foreground = colors['background'],
+                background = colors['background'],
+                padding = 10
+                ),
+            widget.TextBox(
+                padding = 12,
                 foreground = colors['main'],
-                background = colors['main'],
-                padding = 16
+                text = "墳"
                 ),
             VolumeCtrl(
-                background = colors['main'],
+                background = colors['background'],
                 padding = 0,
-                mouse_callbacks={'Button3': lambda: lazy.function(notification('volume'))},
                 ),
             widget.Sep(
+                foreground = colors['background'],
+                background = colors['background'],
+                padding = 8
+                ),
+            widget.TextBox(
+                padding = 12,
                 foreground = colors['main'],
-                background = colors['main'],
-                padding = 16
+                text = "直"
                 ),
             widget.Wlan(
-                format = fa.icons['wifi'],
+                format = "{essid}",
+                foreground = colors['text'],
                 interface = NETWORK_INTERFACE,
-                disconnected_message = fa.icons['times'],
-                background = colors['main'],
+                disconnected_message = "Disconnected",
                 update_interval = 7,
                 padding = 0,
                 mouse_callbacks={'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL, \
-                                            ' -e nmtui'])),
-                                 'Button1': lambda: lazy.function(notification('wifi'))}
+                                                    ' -e nmtui'])),
+                                 'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")}
                 ),
             widget.Sep(
+                foreground = colors['background'],
+                background = colors['background'],
+                padding = 8
+                ),
+            widget.TextBox(
+                padding = 12,
                 foreground = colors['main'],
-                background = colors['main'],
-                padding = 16
+                text = ""
                 ),
             widget.Clock(
                 foreground = colors['text'],
-                background = colors['main'],
+                background = colors['background'],
                 format = '%H:%M',
                 padding = 0,
-                mouse_callbacks = {'Button1': lambda: lazy.function(notification('date')),
-                'Button3': lambda: qtile.cmd_spawn('python -m webbrowser https://kalender.se')
+                mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "d"),
+                                   'Button3': lambda: qtile.cmd_spawn('python -m webbrowser https://kalender.se')
                 }
                 ),
             widget.Sep(
                 padding = 10,
-                foreground = colors['main'],
-                background = colors['main']
+                foreground = colors['background'],
+                background = colors['background']
                 )
         ]
 
 # Check if the computer is a laptop, and if it is add battery widget
 if os.path.isfile('/usr/bin/acpi'):
-    widgets.insert(-2, CustomBattery(
-        padding = 0,
-        background = colors['main'],
-        mouse_callbacks = {'Button1': lambda: lazy.function(notification('battery'))}
-        ))
-    widgets.insert(-2, widget.Sep(
+    widgets.insert(-3, CustomBattery(
+        padding = 8,
         foreground = colors['main'],
-        background = colors['main'],
-        padding = 14
+        background = colors['background'],
+        ))
+    widgets.insert(-3, widget.Battery(
+        padding = 0,
+        foreground = colors['text'],
+        background = colors['background'],
+        format = "{percent:2.0%}",
+        mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "b")}
+        ))
+    widgets.insert(-3, widget.Sep(
+        foreground = colors['background'],
+        background = colors['background'],
+        padding = 8
         ))
 
 # Bar
-bar = bar.Bar(widgets=widgets, size = 32)
+bar = bar.Bar(widgets = widgets, size = 26)
 
 # Screens
-screens = [Screen(top=bar)]
+screens = [Screen(top = bar)]
 
+# Misc
 dgroups_key_binder = None
 dgroups_app_rules = []
 follow_mouse_focus = True

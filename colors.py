@@ -1,9 +1,9 @@
 """
-Defining colors for main cofing custom widgets
+Defining colors for main config custom widgets
 """
 
 colors = {
-    'main':         '#748b68',
+    'main':         '#95b687',
     'secondary':    '#646664',
     'background':   '#222222',
     'text':         '#F1F3EF',
