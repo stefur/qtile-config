@@ -500,16 +500,15 @@ widgets = [
 
 # Check if the computer is a laptop, and if it is add battery widget
 if os.path.isfile('/usr/bin/acpi'):
+    widgets.insert(-3, widget.Sep(
+        foreground = colors['background'],
+        background = colors['background'],
+        padding = 8
+        ))
     widgets.insert(-3, CustomBattery(
-        padding = 8,
+        padding = 0,
         foreground = colors['main'],
         background = colors['background'],
-        ))
-    widgets.insert(-3, widget.Battery(
-        padding = 0,
-        foreground = colors['text'],
-        background = colors['background'],
-        format = "{percent:2.0%}",
         mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "b")}
         ))
     widgets.insert(-3, widget.Sep(
