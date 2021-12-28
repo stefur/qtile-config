@@ -1,10 +1,9 @@
-"""A custom widget to show what Spotify is playing, based on mpris2 widget"""
+"""A custom widget to show what Spotify is playing, based on mpris2 widget. Requires Nerd fonts."""
 from dbus_next.constants import MessageType  # type: ignore
 
 from libqtile.log_utils import logger
 from libqtile.utils import add_signal_receiver
 from libqtile.widget import base
-import fontawesome as fa
 from colors import colors
 
 class NowPlaying(base._TextBox):
@@ -20,11 +19,11 @@ class NowPlaying(base._TextBox):
 
         subscribe_update = await add_signal_receiver(
                         self.updatemessage,
-                        session_bus=True,
-                        signal_name="PropertiesChanged",
-                        bus_name="org.mpris.MediaPlayer2.spotify",
-                        path="/org/mpris/MediaPlayer2",
-                        dbus_interface="org.freedesktop.DBus.Properties")
+                        session_bus = True,
+                        signal_name = "PropertiesChanged",
+                        bus_name = "org.mpris.MediaPlayer2.spotify",
+                        path = "/org/mpris/MediaPlayer2",
+                        dbus_interface = "org.freedesktop.DBus.Properties")
 
         if not subscribe_update:
             msg = "Unable to add signal receiver for Spotify."
@@ -32,10 +31,10 @@ class NowPlaying(base._TextBox):
 
         subscribe_closed = await add_signal_receiver(
             self.closemessage,
-            session_bus=True,
-            signal_name="NameOwnerChanged",
-            path="/org/freedesktop/DBus",
-            dbus_interface="org.freedesktop.DBus")
+            session_bus = True,
+            signal_name = "NameOwnerChanged",
+            path = "/org/freedesktop/DBus",
+            dbus_interface = "org.freedesktop.DBus")
 
         if not subscribe_closed:
             msg = "Unable to add signal receiver for when Spotify is closed."
@@ -93,15 +92,12 @@ class NowPlaying(base._TextBox):
                                  'value',
                                  None)
         if playbackstatus == 'Paused':
-            self.statusicon = '<span foreground="'\
-                                + colors['main'] + '">'\
-                                + fa.icons['pause-circle']\
-                                + '</span>   '
+            self.statusicon = "".join(['<span foreground="', colors['main'], '">',
+                                "", '</span> '])
 
         elif playbackstatus == 'Playing':
-            self.statusicon = '<span foreground="' + colors['main'] + '">'\
-                                + fa.icons['play-circle']\
-                                + '</span>   '
+            self.statusicon = "".join(['<span foreground="', colors['main'], '">',
+                                "契", '</span> '])
         elif self.displaytext:
             # Spotify usually send more than one "Playing" message.
             pass

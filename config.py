@@ -6,7 +6,6 @@ import re
 import subprocess
 
 from datetime import date
-import fontawesome as fa
 import iwlib
 import netifaces as ni
 
@@ -435,7 +434,7 @@ widgets = [
                                    'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "s")}
                 ),
             widget.Systray(
-                padding = 14,
+                padding = 12,
                 background = colors['background']
                 ),
             widget.Sep(
