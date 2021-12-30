@@ -389,33 +389,24 @@ extension_defaults = widget_defaults.copy()
 
 # Widgets
 widgets = [
-            widget.Sep(
-                padding = 2,
-                foreground = colors['background'],
-                ),
             widget.GroupBox(
                 margin_x = 0,
                 hide_unused = False,
                 disable_drag = True,
                 use_mouse_wheel = False,
                 padding = 8,
-                borderwidth = 0,
+                borderwidth = 3,
                 active = colors['text'],
                 inactive = colors['secondary'],
                 rounded = False,
                 highlight_color = colors['background'],
-                highlight_method = 'text',
+                block_highlight_text_color = colors['background'],  
+                highlight_method = 'block',
                 this_current_screen_border = colors['main'],
                 this_screen_border = colors['main'],
                 foreground = colors['text'],
                 urgent_alert_method = 'text',
-                urgent_text = colors['urgent']
-                ),
-            widget.TextBox(
-                padding = 8,
-                foreground = colors['separator'],
-                fontsize = 12,
-                text = "|"
+                urgent_text = colors['urgent'],
                 ),
             widget.CurrentLayout(
                 padding = 8,
