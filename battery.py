@@ -62,7 +62,7 @@ class CustomBattery(base.ThreadPoolText):
                 else:
                     self.foreground = colors['urgent']               
         elif re.search(r"Charging", battery):
-            self.battery_icon = ""
+            self.battery_icon = ""
         elif re.search(r"Not charging", battery):
             self.battery_icon = ""
         else:
