@@ -298,6 +298,7 @@ keys = [
 
         # Media volume keys
         EzKey('<XF86AudioMute>', lazy.widget['volumectrl'].mute()),
+        EzKey('M-m', lazy.widget['volumectrl'].mute()), # Extra keybind for desktop where no media key is present
         EzKey('<XF86AudioLowerVolume>', lazy.widget['volumectrl'].decrease_vol()),
         EzKey('<XF86AudioRaiseVolume>', lazy.widget['volumectrl'].increase_vol()),
 
