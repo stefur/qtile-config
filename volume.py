@@ -3,7 +3,6 @@
 import subprocess
 import re
 from libqtile.widget import base
-import fontawesome as fa
 
 class VolumeCtrl(base._TextBox):
     """Use amixer to get the volume, transform it to a readable format and return an icon"""
@@ -27,8 +26,7 @@ class VolumeCtrl(base._TextBox):
         if re.search('off', vol):
             vol = "Muted"
         else:
-            vol = self.vol_value.search(vol)
-            vol = vol.groups()[0]
+            vol = self.vol_value.search(vol).groups()[0]
             vol = "".join([vol, "%"])
 
         return vol

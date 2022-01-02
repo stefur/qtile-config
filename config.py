@@ -31,7 +31,6 @@ modifier_keys = {
 
 wifi_interface = re.compile('^wlp.|^wlan.')
 steam_game = re.compile('^steam_app_.')
-volume_level = re.compile(r'\[(\d?\d?\d?)%\]')
 
 NETWORK_INTERFACE = list(filter(wifi_interface.match, ni.interfaces()))[0]
 TERMINAL = 'alacritty'
@@ -188,7 +187,7 @@ def notification(request):
                 shell = True), encoding = 'utf-8')
 
         return send_notification(title, message, timeout = 2500, urgent = False)
-    
+
     return _notification
 
 def toggle_microphone():
@@ -218,10 +217,10 @@ def toggle_max_layout(qtile):
     """Basically trying to achieve a 'monocle' toggle of the focused window"""
     current_layout = qtile.current_group.layout.name
 
-    if current_layout == "[]=":
+    if current_layout == layout_names['monadtall']:
         qtile.cmd_to_layout_index(1)
 
-    elif current_layout == "[M]":
+    elif current_layout == layout_names['max']:
         qtile.cmd_to_layout_index(0)
 
 def toggle_screen(qtile):
@@ -313,14 +312,49 @@ keys = [
         EzKey('M-C-<Escape>', lazy.spawn('poweroff')),
 
     ]
+
+# Layouts
+layout_theme = {
+        'border_width': 2,
+        'border_focus': colors['main'],
+        'border_normal': colors['separator'],
+        }
+
+layout_names = {'monadtall': "[]=",
+                'max': "[M]"
+        }
+
+layouts = [
+        layout.MonadTall(
+        **layout_theme,
+        single_border_width = 0,
+        name = layout_names['monadtall']
+        ),
+        layout.Max(
+        name = layout_names['max']
+        )
+        ]
+
+floating_layout = layout.Floating(float_rules=[
+      *layout.Floating.default_float_rules,
+      Match(wm_class = 'Nm-connection-editor'),
+      Match(wm_class = 'pinentry-gtk-2'),
+      Match(wm_class = 'Lxappearance'),
+      Match(wm_class = 'Xfce4-taskmanager'),
+      Match(wm_class = 'VirtualBox Manager'),
+      Match(wm_class = 'pavucontrol'),
+      Match(title = 'Confirm File Replacing') # This is to float the copy/replace dialog of Pcmanfm
+    ],
+    **layout_theme)
+
 # Groups
 group_settings = [
-        ('1', {'label': "1", 'layout': 'monadtall'}),
-        ('2', {'label': "2", 'layout': 'monadtall'}),
-        ('3', {'label': "3", 'layout': 'monadtall'}),
-        ('4', {'label': "4", 'layout': 'monadtall'}),
-        ('5', {'label': "5", 'layout': 'monadtall'}),
-        ('6', {'label': "6", 'layout': 'monadtall'}),
+        ('1', {'label': "1", 'layout': layout_names['monadtall']}),
+        ('2', {'label': "2", 'layout': layout_names['monadtall']}),
+        ('3', {'label': "3", 'layout': layout_names['monadtall']}),
+        ('4', {'label': "4", 'layout': layout_names['monadtall']}),
+        ('5', {'label': "5", 'layout': layout_names['monadtall']}),
+        ('6', {'label': "6", 'layout': layout_names['monadtall']}),
     ]
 
 groups = [Group(name, **kwargs) for name, kwargs in group_settings]
@@ -338,36 +372,6 @@ groups.append(ScratchPad('scratchpad', [
         height = 0.6,
         y = 0.2)
         ]))
-
-# Layouts
-layout_theme = {
-        'border_width': 2,
-        'border_focus': colors['main'],
-        'border_normal': colors['separator'],
-        }
-
-layouts = [
-        layout.MonadTall(
-        **layout_theme,
-        single_border_width = 0,
-        name = "[]=", 
-        ),
-        layout.Max(
-        name = "[M]"
-        )
-        ]
-
-floating_layout = layout.Floating(float_rules=[
-      *layout.Floating.default_float_rules,
-      Match(wm_class='Nm-connection-editor'),
-      Match(wm_class='pinentry-gtk-2'),
-      Match(wm_class='Lxappearance'),
-      Match(wm_class='Xfce4-taskmanager'),
-      Match(wm_class='VirtualBox Manager'),
-      Match(wm_class='pavucontrol'),
-      Match(title='Confirm File Replacing') # This is to float the copy/replace dialog of Pcmanfm
-    ],
-    **layout_theme)
 
 # Mouse
 mouse = [
@@ -397,11 +401,11 @@ widgets = [
                 use_mouse_wheel = False,
                 padding = 6,
                 borderwidth = 3,
-                active = colors['text'],
+                active = colors['main'],
                 inactive = colors['secondary'],
                 rounded = False,
                 highlight_color = colors['background'],
-                block_highlight_text_color = colors['background'],  
+                block_highlight_text_color = colors['background'],
                 highlight_method = 'block',
                 this_current_screen_border = colors['main'],
                 this_screen_border = colors['main'],
@@ -413,6 +417,7 @@ widgets = [
                 padding = 8,
                 foreground = colors['main']
             ),
+            widget.Prompt(),
             widget.WindowName(
                 max_chars = 50,
                 empty_group_string = "Desktop",
