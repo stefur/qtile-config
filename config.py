@@ -55,12 +55,17 @@ def autostart():
     with subprocess.Popen("startup", shell = True) as process:
         hook.subscribe.shutdown(process.terminate)
 
-@hook.subscribe.client_urgent_hint_changed
-def follow_links(client):
-    """If Firefox changes urgency hint go to it, focus_on_window_activation must be set to urgent"""
-    if client.window.get_wm_class()[0] == "Navigator":
-        subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check = True, shell = True)
-    else:
+@hook.subscribe.client_name_updated
+def follow_url(client):
+    """If Firefox is flagged as urgent, focus it"""
+    try:    
+        urgent = client.urgent
+        wm_class = client.window.get_wm_class()[0]
+        if wm_class == "Navigator" and urgent == True:
+            subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check = True, shell = True)
+        else:
+            return
+    except IndexError:
         return
 
 @hook.subscribe.float_change
@@ -91,7 +96,6 @@ def center_window():
 @hook.subscribe.client_new
 def assign_app_group(client):
     """Decides which apps go where when they are launched"""
-
     try:
         wm_class = client.window.get_wm_class()[0]
 
@@ -107,7 +111,6 @@ def assign_app_group(client):
 @hook.subscribe.client_name_updated
 def push_spotify(client):
     """Push Spotify to correct group since it's wm_class setting is slow"""
-
     try:
         if client.window.get_wm_class()[0] == "spotify":
             client.togroup('4')
@@ -437,41 +440,6 @@ widgets = [
             widget.Sep(
                 foreground = colors['background'],
                 background = colors['background'],
-                padding = 10
-                ),
-            widget.TextBox(
-                padding = 12,
-                foreground = colors['main'],
-                text = "墳"
-                ),
-            VolumeCtrl(
-                background = colors['background'],
-                padding = 0,
-                ),
-            widget.Sep(
-                foreground = colors['background'],
-                background = colors['background'],
-                padding = 8
-                ),
-            widget.TextBox(
-                padding = 12,
-                foreground = colors['main'],
-                text = "直"
-                ),
-            widget.Wlan(
-                format = "{essid}",
-                foreground = colors['text'],
-                interface = NETWORK_INTERFACE,
-                disconnected_message = "Disconnected",
-                update_interval = 7,
-                padding = 0,
-                mouse_callbacks={'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL, \
-                                                    ' -e nmtui'])),
-                                 'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")}
-                ),
-            widget.Sep(
-                foreground = colors['background'],
-                background = colors['background'],
                 padding = 8
                 ),
             widget.TextBox(
@@ -495,18 +463,48 @@ widgets = [
                 )
         ]
 
-# Check if the computer is a laptop, and if it is add battery widget
+# Check if the computer is a laptop, and add some extra widgets if it is
 if os.path.isfile('/usr/bin/acpi'):
+    widgets.insert(-3, widget.TextBox(
+        padding = 12,
+        foreground = colors['main'],
+        text = "墳"
+        ))
+    widgets.insert(-3, VolumeCtrl(
+        background = colors['background'],
+        padding = 0,
+        ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],
         background = colors['background'],
         padding = 8
         ))
+    widgets.insert(-3, widget.TextBox(
+        padding = 12,
+        foreground = colors['main'],
+        text = "直"
+        ))
+    widgets.insert(-3, widget.Wlan(
+        format = "{essid}",
+        foreground = colors['text'],
+        interface = NETWORK_INTERFACE,
+        disconnected_message = "Disconnected",
+        update_interval = 7,
+        padding = 0,
+        mouse_callbacks = { 'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL, \
+                                            ' -e nmtui'])),
+                            'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")} 
+        ))
+    widgets.insert(-3, widget.Sep(
+        foreground = colors['background'],
+        background = colors['background'],
+        padding = 16
+        ))
     widgets.insert(-3, CustomBattery(
         padding = 0,
         foreground = colors['main'],
         background = colors['background'],
-        mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "b")}
+        mouse_callbacks = { 'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "b") }
         ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],
