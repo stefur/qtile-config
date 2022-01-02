@@ -58,10 +58,10 @@ def autostart():
 @hook.subscribe.client_name_updated
 def follow_url(client):
     """If Firefox is flagged as urgent, focus it"""
-    try:    
+    try:
         urgent = client.urgent
         wm_class = client.window.get_wm_class()[0]
-        if wm_class == "Navigator" and urgent == True:
+        if wm_class == "Navigator" and urgent is True:
             subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check = True, shell = True)
         else:
             return
@@ -134,6 +134,11 @@ def fallback_default_layout(*args):
 
     qtile.cmd_to_layout_index(0)
 
+@hook.subscribe.current_screen_change
+def warp_cursor(qtile):
+    """Warp cursor to focused screen"""
+    qtile.warp_to_screen()
+
 def run_or_raise(app):
     """Check if the app being launched is already running, if so do nothing"""
     def run_cmd(qtile):
@@ -150,7 +155,8 @@ def run_or_raise(app):
 
                 subprocess.check_output([''.join(['pgrep -f ', app_wmclass])], shell = True)
 
-                subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], check = True, shell = True)
+                subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], \
+                    check = True, shell = True)
 
             except subprocess.CalledProcessError:
                 qtile.cmd_spawn(app)
@@ -167,10 +173,10 @@ def notification(request):
                 interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
                 quality = interface['stats']['quality']
                 quality = round((quality / 70)*100)
-                ssid = interface['ESSID']
+                ssid = str(interface['ESSID'], encoding = 'utf-8')
                 title = "Wifi"
                 message = "".join(
-                    [str(ssid, encoding = 'utf-8'), "\nSignal strength: {}%".format(quality)])
+                    [ssid, f"\nSignal strength: {quality}%"])
 
             except KeyError:
                 title = "Disconnected"
@@ -226,11 +232,6 @@ def toggle_max_layout(qtile):
     elif current_layout == layout_names['max']:
         qtile.cmd_to_layout_index(0)
 
-def toggle_screen(qtile):
-    """Move to next screen, and warp the mouse there as well"""
-    qtile.cmd_next_screen()
-    qtile.warp_to_screen()
-
 # Keybinds
 keys = [
         # Switch focus between windows
@@ -251,10 +252,11 @@ keys = [
         EzKey('M-C-<Down>', lazy.layout.shrink()),
         EzKey('M-C-<Up>', lazy.layout.grow()),
 
-        # Basically a focus toggle if two screens
-        EzKey('M-a', lazy.function(toggle_screen)),
+        # Move between screens
+        EzKey('M-<period>', lazy.next_screen()),
+        EzKey('M-<comma>', lazy.prev_screen()),
 
-        # Various window controls
+        ## Various window controls
         EzKey('M-S-c', lazy.window.kill()),
         EzKey('M-n', lazy.layout.reset()),
         EzKey('M-<space>', lazy.function(toggle_max_layout)),
@@ -300,7 +302,7 @@ keys = [
 
         # Media volume keys
         EzKey('<XF86AudioMute>', lazy.widget['volumectrl'].mute()),
-        EzKey('M-m', lazy.widget['volumectrl'].mute()), # Extra keybind for desktop where no media key is present
+        EzKey('M-m', lazy.widget['volumectrl'].mute()), # Extra keybind
         EzKey('<XF86AudioLowerVolume>', lazy.widget['volumectrl'].decrease_vol()),
         EzKey('<XF86AudioRaiseVolume>', lazy.widget['volumectrl'].increase_vol()),
 
@@ -452,8 +454,10 @@ widgets = [
                 background = colors['background'],
                 format = '%H:%M',
                 padding = 0,
-                mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "d"),
-                                   'Button3': lambda: qtile.cmd_spawn('python -m webbrowser https://kalender.se')
+                mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress(
+                                        [MOD, 'shift'], "d"),
+                                   'Button3': lambda: qtile.cmd_spawn(
+                                       'python -m webbrowser https://kalender.se')
                 }
                 ),
             widget.Sep(
@@ -491,9 +495,9 @@ if os.path.isfile('/usr/bin/acpi'):
         disconnected_message = "Disconnected",
         update_interval = 7,
         padding = 0,
-        mouse_callbacks = { 'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL, \
+        mouse_callbacks = { 'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL,
                                             ' -e nmtui'])),
-                            'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")} 
+                            'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")}
         ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],

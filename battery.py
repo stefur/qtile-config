@@ -3,7 +3,6 @@
 import subprocess
 import re
 
-from libqtile.utils import send_notification
 from libqtile.widget import base
 from libqtile.log_utils import logger
 
@@ -55,6 +54,7 @@ class CustomBattery(base.ThreadPoolText):
         else:
             logger.error("Cannot determine battery status. Is ACPI installed and working?")
 
-        output = "".join([battery_icon, ' <span foreground="', colors['text'], '">', "{0}%".format(battery_level), '</span>'])
+        output = "".join([battery_icon, ' <span foreground="', colors['text'], '">', 
+                        f"{battery_level}%", '</span>'])
 
         return output
