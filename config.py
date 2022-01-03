@@ -325,8 +325,8 @@ layout_theme = {
         'border_normal': colors['separator'],
         }
 
-layout_names = {'monadtall': "[]=",
-                'max': "[M]"
+layout_names = {'monadtall': "tall",
+                'max': "max"
         }
 
 layouts = [
