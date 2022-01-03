@@ -114,9 +114,7 @@ def push_spotify(client):
     try:
         if client.window.get_wm_class()[0] == "spotify":
             client.togroup('4')
-        else:
-            return
-
+            qtile.current_group.layout_all()
     except IndexError:
         return
 
@@ -133,6 +131,15 @@ def fallback_default_layout(*args):
         return
 
     qtile.cmd_to_layout_index(0)
+
+@hook.subscribe.client_killed
+def minimize_discord(client):
+    """Discord workaround to fix lingering residual window after its been closed to tray"""
+    try:
+        if client.window.get_wm_class()[0] == "discord":
+            client.toggle_minimize()
+    except IndexError:
+       return
 
 @hook.subscribe.current_screen_change
 def warp_cursor(qtile):
