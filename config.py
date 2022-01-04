@@ -57,7 +57,7 @@ appcmd_to_wmclass = {
 @hook.subscribe.startup_once
 def autostart():
     """Autostart things from script when qtile starts and hide the bar as default"""
-    with subprocess.Popen("startup", shell = True) as process:
+    with subprocess.Popen("autostart.sh", shell = True) as process:
         hook.subscribe.shutdown(process.terminate)
     qtile.cmd_simulate_keypress([MOD], "b")
 
@@ -280,11 +280,11 @@ keys = [
         EzKey('M-d', lazy.function(run_or_raise('discord'))),
         EzKey('M-s', lazy.function(run_or_raise('spotify'))),
         EzKey('M-g', lazy.function(run_or_raise('steam-native'))),
-        EzKey('M-p', lazy.spawn('passmenu')),
+        EzKey('M-p', lazy.spawn('passmenu.sh')),
 
         # KeyChords for some special actions
         KeyChord([MOD], 'k', [
-            EzKey('c', lazy.spawn('rofi-confedit')),
+            EzKey('c', lazy.spawn('confedit.sh')),
             EzKey('q', lazy.spawn('alacritty -e vim ~/.config/qtile/')),
             EzKey('u', lazy.spawn('alacritty -e yay -Syu')),
         ]),
@@ -307,7 +307,7 @@ keys = [
         EzKey('M-q', lazy.function(toggle_microphone())),
 
         # System controls
-        EzKey('M-l', lazy.spawn('lock')),
+        EzKey('M-l', lazy.spawn('lock.sh')),
         EzKey('M-S-r', lazy.reload_config()),
         EzKey('M-C-r', lazy.restart()),
         EzKey('M-S-q', lazy.shutdown()),
