@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""My qtile config"""
+"""Qtile config a la stefur"""
 
 import os
 import re
 import subprocess
 
-from datetime import date
+from datetime import datetime
 import iwlib
 import netifaces as ni
 
@@ -49,22 +49,24 @@ group_assignments = {
     '5': ['Steam'],
 }
 
+appcmd_to_wmclass = {
+    'signal-desktop': 'signal',
+    'steam-native': 'steam'
+}
+
 @hook.subscribe.startup_once
 def autostart():
-    """Autostart things from script when qtile starts"""
+    """Autostart things from script when qtile starts and hide the bar as default"""
     with subprocess.Popen("startup", shell = True) as process:
         hook.subscribe.shutdown(process.terminate)
+    qtile.cmd_simulate_keypress([MOD], "b")
 
 @hook.subscribe.client_name_updated
 def follow_url(client):
     """If Firefox is flagged as urgent, focus it"""
     try:
-        urgent = client.urgent
-        wm_class = client.window.get_wm_class()[0]
-        if wm_class == "Navigator" and urgent is True:
-            subprocess.run([''.join(['wmctrl -x -a ', BROWSER])], check = True, shell = True)
-        else:
-            return
+        if client.window.get_wm_class()[0] == "Navigator" and client.urgent is True:
+            subprocess.run(f'wmctrl -x -a {BROWSER}', check = True, shell = True)
     except IndexError:
         return
 
@@ -98,13 +100,8 @@ def assign_app_group(client):
     """Decides which apps go where when they are launched"""
     try:
         wm_class = client.window.get_wm_class()[0]
-
-        if steam_game.search(wm_class): # I want all steam games on workspace 2
-            client.togroup('2')
-        else:
-            group = list(k for k, v in group_assignments.items() if wm_class in v)[0]
-            client.togroup(group)
-
+        group = '2' if steam_game.search(wm_class) else list(k for k, v in group_assignments.items() if wm_class in v)[0]
+        client.togroup(group)
     except IndexError:
         return
 
@@ -115,6 +112,7 @@ def push_spotify(client):
         if client.window.get_wm_class()[0] == "spotify":
             client.togroup('4')
             qtile.current_group.layout_all()
+
     except IndexError:
         return
 
@@ -138,6 +136,7 @@ def minimize_discord(client):
     try:
         if client.window.get_wm_class()[0] == "discord":
             client.toggle_minimize()
+
     except IndexError:
        return
 
@@ -150,25 +149,14 @@ def run_or_raise(app):
     """Check if the app being launched is already running, if so do nothing"""
     def run_cmd(qtile):
         """Run the subprocess check and raise app if it's running"""
-        if qtile:
-            try:
-                # First a "temporary" fix to catch Signal and Steam
-                if app == 'signal-desktop':
-                    app_wmclass = 'signal'
-                elif app == 'steam-native':
-                    app_wmclass = 'steam'
-                else:
-                    app_wmclass = app
+        try:
+            app_wm_class = list((v if k == app else app) for k, v in appcmd_to_wmclass.items())[0]
+            subprocess.check_output(f'pgrep -f {app_wm_class}', shell = True)
+            subprocess.run(f'wmctrl -x -a {app_wm_class}', check = True, shell = True)
 
-                subprocess.check_output([''.join(['pgrep -f ', app_wmclass])], shell = True)
+        except subprocess.CalledProcessError:
+            qtile.cmd_spawn(app)
 
-                subprocess.run([''.join(['wmctrl -x -a ', app_wmclass])], \
-                    check = True, shell = True)
-
-            except subprocess.CalledProcessError:
-                qtile.cmd_spawn(app)
-        else:
-            return
     return run_cmd
 
 def notification(request):
@@ -182,19 +170,23 @@ def notification(request):
                 quality = round((quality / 70)*100)
                 ssid = str(interface['ESSID'], encoding = 'utf-8')
                 title = "Wifi"
-                message = "".join(
-                    [ssid, f"\nSignal strength: {quality}%"])
-
+                message = f"{ssid}\nSignal strength: {quality}%"
             except KeyError:
                 title = "Disconnected"
                 message = ""
 
         elif request == 'date':
-            today = date.today()
+            today = datetime.today()
             todaysdate = today.strftime("%-d %B")
             weekday = today.strftime("%A")
-            title =  "".join([str(todaysdate), " (", str(weekday),")"])
-            message = "".join(["Week ", str(date.today().isocalendar()[1])])
+            week = datetime.today().isocalendar()[1]
+            title = f"{todaysdate}, ({weekday})"
+            message = f"Week {week}"
+
+        elif request == 'time':
+            now = datetime.now()
+            title = "The time is:"
+            message = now.strftime("%H:%M")
 
         elif request == 'battery':
             title = "Battery status"
@@ -209,7 +201,7 @@ def notification(request):
 def toggle_microphone():
     """Run the toggle command and then send notification to report status of microphone"""
     def _toggle_microphone(qtile):
-        if qtile:
+        try:
             subprocess.call(['amixer set Capture toggle'], shell = True)
 
             message = subprocess.check_output(['amixer sget Capture'], shell = True).decode('utf-8')
@@ -224,19 +216,17 @@ def toggle_microphone():
 
             send_notification(title, message, timeout = 2500, urgent = False)
 
-        else:
+        except subprocess.CalledProcessError:
             return
 
     return _toggle_microphone
 
 def toggle_max_layout(qtile):
     """Basically trying to achieve a 'monocle' toggle of the focused window"""
-    current_layout = qtile.current_group.layout.name
-
-    if current_layout == layout_names['monadtall']:
+    if qtile.current_group.layout.name == layout_names['monadtall']:
         qtile.cmd_to_layout_index(1)
 
-    elif current_layout == layout_names['max']:
+    elif qtile.current_group.layout.name == layout_names['max']:
         qtile.cmd_to_layout_index(0)
 
 # Keybinds
@@ -279,7 +269,7 @@ keys = [
         EzKey('M-S-b', lazy.function(notification('battery'))),
         EzKey('M-S-d', lazy.function(notification('date'))),
         EzKey('M-S-w', lazy.function(notification('wifi'))),
-
+        EzKey('M-S-t', lazy.function(notification('time'))),
 
         # Some app shortcuts
         EzKey('M-w', lazy.function(run_or_raise(BROWSER))),
@@ -303,9 +293,9 @@ keys = [
         EzKey('M-S-<Return>', lazy.group['scratchpad'].dropdown_toggle('term')),
 
         # Spotify controls, lacking real media keys on 65% keyboard
-        EzKey('M-8', lazy.spawn(''.join([MUSIC_CTRL, 'PlayPause']))),
-        EzKey('M-9', lazy.spawn(''.join([MUSIC_CTRL, 'Next']))),
-        EzKey('M-7', lazy.spawn(''.join([MUSIC_CTRL, 'Previous']))),
+        EzKey('M-8', lazy.spawn(f'{MUSIC_CTRL}PlayPause')),
+        EzKey('M-9', lazy.spawn(f'{MUSIC_CTRL}Next')),
+        EzKey('M-7', lazy.spawn(f'{MUSIC_CTRL}Previous')),
 
         # Media volume keys
         EzKey('<XF86AudioMute>', lazy.widget['volumectrl'].mute()),
@@ -438,8 +428,7 @@ widgets = [
                 length = bar.STRETCH,
                 ),
             NowPlaying(
-                mouse_callbacks = {'Button1': lambda: qtile.cmd_spawn(''.join([MUSIC_CTRL, \
-                                                'PlayPause'])),
+                mouse_callbacks = {'Button1': lambda: qtile.cmd_spawn(f'{MUSIC_CTRL}PlayPause'),
                                    'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "s")}
                 ),
             widget.Systray(
@@ -502,8 +491,7 @@ if os.path.isfile('/usr/bin/acpi'):
         disconnected_message = "Disconnected",
         update_interval = 7,
         padding = 0,
-        mouse_callbacks = { 'Button3': lambda: qtile.cmd_spawn(''.join([TERMINAL,
-                                            ' -e nmtui'])),
+        mouse_callbacks = { 'Button3': lambda: qtile.cmd_spawn(f'{TERMINAL} -e nmtui'),
                             'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")}
         ))
     widgets.insert(-3, widget.Sep(

@@ -45,8 +45,7 @@ class CustomBattery(base.ThreadPoolText):
         battery_level = int(self.find_battery_level.search(battery).groups()[0])
 
         if re.search(r"Discharging", battery):
-            battery_icon = { k:v for k, v in self.battery_level_icons.items() if battery_level > v}
-            battery_icon = next(iter(battery_icon))
+            battery_icon = next(iter({k:v for k, v in self.battery_level_icons.items() if battery_level >= v}))
         elif re.search(r"Charging", battery):
             battery_icon = ""
         elif re.search(r"Not charging", battery):
