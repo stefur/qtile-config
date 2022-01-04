@@ -49,9 +49,9 @@ group_assignments = {
     '5': ['Steam'],
 }
 
-appcmd_to_wmclass = {
+appcmd_to_wm_class = {
     'signal-desktop': 'signal',
-    'steam-native': 'steam'
+    'steam-native': 'Steam'
 }
 
 @hook.subscribe.startup_once
@@ -150,7 +150,7 @@ def run_or_raise(app):
     def run_cmd(qtile):
         """Run the subprocess check and raise app if it's running"""
         try:
-            app_wm_class = list((v if k == app else app) for k, v in appcmd_to_wmclass.items())[0]
+            app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
             subprocess.check_output(f'pgrep -f {app_wm_class}', shell = True)
             subprocess.run(f'wmctrl -x -a {app_wm_class}', check = True, shell = True)
 
