@@ -59,7 +59,7 @@ def autostart():
     """Autostart things from script when qtile starts and hide the bar as default"""
     with subprocess.Popen("autostart.sh", shell = True) as process:
         hook.subscribe.shutdown(process.terminate)
-    qtile.cmd_simulate_keypress([MOD], "b")
+    qtile.cmd_hide_show_bar()
 
 @hook.subscribe.client_name_updated
 def follow_url(client):
@@ -141,7 +141,7 @@ def minimize_discord(client):
        return
 
 @hook.subscribe.current_screen_change
-def warp_cursor(qtile):
+def warp_cursor():
     """Warp cursor to focused screen"""
     qtile.warp_to_screen()
 
