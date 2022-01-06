@@ -189,10 +189,13 @@ def notification(request):
             message = now.strftime("%H:%M")
 
         elif request == 'battery':
-            title = "Battery status"
-            message = str(subprocess.check_output(
-                ["acpi"],
-                shell = True), encoding = 'utf-8')
+            try:
+                title = "Battery status"
+                message = str(subprocess.check_output(
+                    ["acpi"],
+                    shell = True), encoding = 'utf-8')
+            except subprocess.CalledProcessError:
+                return
 
         return send_notification(title, message, timeout = 2500, urgent = False)
 
