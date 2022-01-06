@@ -67,7 +67,7 @@ def follow_url(client):
     try:
         if client.window.get_wm_class()[0] == "Navigator" and client.urgent is True:
             subprocess.run(f'wmctrl -x -a {BROWSER}', check = True, shell = True)
-    except IndexError:
+    except (IndexError, subprocess.CalledProcessError):
         return
 
 @hook.subscribe.float_change
@@ -386,7 +386,7 @@ mouse = [
 
 # Widgets & extension defaults
 widget_defaults = dict(
-        font = 'FiraCode Nerd Font',
+        font = 'FiraCode Nerd Font Regular',
         fontsize = 13,
         background = colors['background'],
         foreground = colors['text']
@@ -428,8 +428,8 @@ widgets = [
                 length = bar.STRETCH,
                 ),
             NowPlaying(
-                mouse_callbacks = {'Button1': lambda: qtile.cmd_spawn(f'{MUSIC_CTRL}PlayPause'),
-                                   'Button3': lambda: qtile.cmd_simulate_keypress([MOD], "s")}
+                mouse_callbacks = {'Button1': lazy.spawn(f'{MUSIC_CTRL}PlayPause'),
+                                   'Button3': lazy.function(run_or_raise('spotify'))}
                 ),
             widget.Systray(
                 padding = 12,
@@ -450,10 +450,8 @@ widgets = [
                 background = colors['background'],
                 format = '%H:%M',
                 padding = 0,
-                mouse_callbacks = {'Button1': lambda: qtile.cmd_simulate_keypress(
-                                        [MOD, 'shift'], "d"),
-                                   'Button3': lambda: qtile.cmd_spawn(
-                                       'python -m webbrowser https://kalender.se')
+                mouse_callbacks = {'Button1': lazy.function(notification('date')),
+                                   'Button3': lazy.spawn('python -m webbrowser https://kalender.se')
                 }
                 ),
             widget.Sep(
@@ -491,8 +489,8 @@ if os.path.isfile('/usr/bin/acpi'):
         disconnected_message = "Disconnected",
         update_interval = 7,
         padding = 0,
-        mouse_callbacks = { 'Button3': lambda: qtile.cmd_spawn(f'{TERMINAL} -e nmtui'),
-                            'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "w")}
+        mouse_callbacks = { 'Button3': lazy.spawn(f'{TERMINAL} -e nmtui'),
+                            'Button1': lazy.function(notification('wifi'))}
         ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],
@@ -503,7 +501,7 @@ if os.path.isfile('/usr/bin/acpi'):
         padding = 0,
         foreground = colors['main'],
         background = colors['background'],
-        mouse_callbacks = { 'Button1': lambda: qtile.cmd_simulate_keypress([MOD, 'shift'], "b") }
+        mouse_callbacks = { 'Button1': lazy.function(notification('battery'))}
         ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],
