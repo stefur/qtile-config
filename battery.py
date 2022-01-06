@@ -53,7 +53,4 @@ class CustomBattery(base.ThreadPoolText):
         else:
             logger.error("Cannot determine battery status. Is ACPI installed and working?")
 
-        output = "".join([battery_icon, ' <span foreground="', colors['text'], '">', 
-                        f"{battery_level}%", '</span>'])
-
-        return output
+        return f"{battery_icon} <span foreground='{colors['text']}'>{battery_level}%</span>"

@@ -92,12 +92,12 @@ class NowPlaying(base._TextBox):
                                  'value',
                                  None)
         if playbackstatus == 'Paused':
-            self.statusicon = "".join(['<span foreground="', colors['main'], '">',
-                                "", '</span> '])
+            self.statusicon = f"<span foreground='{colors['main']}'> \
+                                 </span>"
 
         elif playbackstatus == 'Playing':
-            self.statusicon = "".join(['<span foreground="', colors['main'], '">',
-                                "契", '</span> '])
+            self.statusicon = f"<span foreground='{colors['main']}'>, \
+                                契 </span>"
         elif self.displaytext:
             # Spotify usually send more than one "Playing" message.
             pass

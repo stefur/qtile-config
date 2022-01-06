@@ -27,7 +27,7 @@ class VolumeCtrl(base._TextBox):
             vol = "Muted"
         else:
             vol = self.vol_value.search(vol).groups()[0]
-            vol = "".join([vol, "%"])
+            vol = f"{vol}%"
 
         return vol
 
