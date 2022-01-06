@@ -419,7 +419,6 @@ widgets = [
                 padding = 8,
                 foreground = colors['main']
             ),
-            widget.Prompt(),
             widget.WindowName(
                 max_chars = 50,
                 empty_group_string = "Desktop",
