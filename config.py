@@ -259,11 +259,11 @@ keys = [
         ## Various window controls
         EzKey('M-S-c', lazy.window.kill()),
         EzKey('M-C-c', lazy.function(center_window)),
-        EzKey('M-n', lazy.layout.reset()),
-        EzKey('M-<space>', lazy.function(toggle_max_layout)),
+        EzKey('M-S-<space>', lazy.layout.reset()),
+        EzKey('M-m', lazy.function(toggle_max_layout)),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
-        EzKey('M-S-<space>', lazy.layout.flip()),
+        EzKey('M-<space>', lazy.layout.flip()),
         EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
         EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
         EzKey('M-b', lazy.hide_show_bar()),
@@ -284,12 +284,13 @@ keys = [
         EzKey('M-s', lazy.function(run_or_raise('spotify'))),
         EzKey('M-g', lazy.function(run_or_raise('steam-native'))),
         EzKey('M-p', lazy.spawn('passmenu.sh')),
+        EzKey('M-n', lazy.spawn(f'{TERMINAL} -e newsboat')),
 
         # KeyChords for some special actions
         KeyChord([MOD], 'k', [
             EzKey('c', lazy.spawn('confedit.sh')),
-            EzKey('q', lazy.spawn('alacritty -e vim ~/.config/qtile/')),
-            EzKey('u', lazy.spawn('alacritty -e yay -Syu')),
+            EzKey('q', lazy.spawn(f'{TERMINAL} -e vim ~/.config/qtile/')),
+            EzKey('u', lazy.spawn(f'{TERMINAL} -e yay -Syu')),
         ]),
 
         # ScratchPad terminal
@@ -302,7 +303,7 @@ keys = [
 
         # Media volume keys
         EzKey('<XF86AudioMute>', lazy.widget['volumectrl'].mute()),
-        EzKey('M-m', lazy.widget['volumectrl'].mute()), # Extra keybind
+        EzKey('M-S-m', lazy.widget['volumectrl'].mute()), # Extra keybind
         EzKey('<XF86AudioLowerVolume>', lazy.widget['volumectrl'].decrease_vol()),
         EzKey('<XF86AudioRaiseVolume>', lazy.widget['volumectrl'].increase_vol()),
 
