@@ -71,7 +71,7 @@ def follow_url(client):
         return
 
 @hook.subscribe.float_change
-def center_window():
+def center_window(*args):
     """Centers all the floating windows"""
     client = qtile.current_window
 
@@ -258,6 +258,7 @@ keys = [
 
         ## Various window controls
         EzKey('M-S-c', lazy.window.kill()),
+        EzKey('M-C-c', lazy.function(center_window)),
         EzKey('M-n', lazy.layout.reset()),
         EzKey('M-<space>', lazy.function(toggle_max_layout)),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
