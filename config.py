@@ -260,7 +260,6 @@ keys = [
         EzKey('M-S-c', lazy.window.kill()),
         EzKey('M-n', lazy.layout.reset()),
         EzKey('M-<space>', lazy.function(toggle_max_layout)),
-        EzKey('M-c', lazy.function(center_window)),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
         EzKey('M-S-<space>', lazy.layout.flip()),
