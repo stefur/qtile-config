@@ -51,7 +51,7 @@ group_assignments = {
 
 appcmd_to_wm_class = {
     'signal-desktop': 'signal',
-    'steam-native': 'Steam',
+    'steam-native': 'Steam'
 }
 
 @hook.subscribe.startup_once
@@ -149,9 +149,7 @@ def warp_cursor():
 
 def run_or_raise(app):
     """Check if the app being launched is already running, if so do nothing"""
-
     def run_cmd(qtile):
-
         try:
             app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
             
@@ -283,8 +281,6 @@ keys = [
         EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
         EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
         EzKey('M-b', lazy.hide_show_bar()),
-        EzKey('M-C-f', lazy.findwindow()),
-
 
         # Notification commands
         EzKey('M-S-b', lazy.function(notification('battery'))),
@@ -445,7 +441,6 @@ widgets = [
                 max_chars = 50,
                 empty_group_string = "Desktop",
                 ),
-            widget.Prompt(),
             widget.Spacer(
                 length = bar.STRETCH,
                 ),
