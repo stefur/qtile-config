@@ -51,7 +51,7 @@ group_assignments = {
 
 appcmd_to_wm_class = {
     'signal-desktop': 'signal',
-    'steam-native': 'Steam'
+    'steam-native': 'Steam',
 }
 
 @hook.subscribe.startup_once
@@ -66,8 +66,10 @@ def follow_url(client):
     """If Firefox is flagged as urgent, focus it"""
     try:
         if client.window.get_wm_class()[0] == "Navigator" and client.urgent is True:
-            subprocess.run(f'wmctrl -x -a {BROWSER}', check = True, shell = True)
-    except (IndexError, subprocess.CalledProcessError):
+            qtile.current_screen.set_group(client.group)
+            client.group.focus(client)
+
+    except IndexError:
         return
 
 @hook.subscribe.float_change
@@ -147,14 +149,28 @@ def warp_cursor():
 
 def run_or_raise(app):
     """Check if the app being launched is already running, if so do nothing"""
+
     def run_cmd(qtile):
-        """Run the subprocess check and raise app if it's running"""
+
         try:
             app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
-            subprocess.check_output(f'pgrep -f {app_wm_class}', shell = True)
-            subprocess.run(f'wmctrl -x -a {app_wm_class}', check = True, shell = True)
+            
+            # Get the window IDs of all open windows in a list
+            wids = list(qtile.windows_map)
 
-        except subprocess.CalledProcessError:
+            # Get the window objects of each WID
+            windows = [qtile.windows_map[wid].window for wid in wids]
+
+            # Select the window object with a matching WM class and find its group object
+            window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
+            win_on_group = str(window.get_wm_desktop() + 1)
+            group = qtile.groups_map[win_on_group]
+
+            # Go to the group and set input forcus to the window (cursor will not warp)
+            qtile.current_screen.set_group(group)
+            window.set_input_focus()
+
+        except IndexError:
             qtile.cmd_spawn(app)
 
     return run_cmd
@@ -267,6 +283,8 @@ keys = [
         EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
         EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
         EzKey('M-b', lazy.hide_show_bar()),
+        EzKey('M-C-f', lazy.findwindow()),
+
 
         # Notification commands
         EzKey('M-S-b', lazy.function(notification('battery'))),
@@ -427,6 +445,7 @@ widgets = [
                 max_chars = 50,
                 empty_group_string = "Desktop",
                 ),
+            widget.Prompt(),
             widget.Spacer(
                 length = bar.STRETCH,
                 ),
