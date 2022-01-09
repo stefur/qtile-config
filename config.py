@@ -225,13 +225,14 @@ def toggle_microphone():
 
     return _toggle_microphone
 
-def toggle_max_layout(qtile):
-    """Basically trying to achieve a 'monocle' toggle of the focused window"""
-    if qtile.current_group.layout.name == layout_names['monadtall']:
-        qtile.cmd_to_layout_index(1)
-
-    elif qtile.current_group.layout.name == layout_names['max']:
-        qtile.cmd_to_layout_index(0)
+def toggle_layout(layout_name):
+    """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
+    def _toggle_layout(qtile):
+        if qtile.current_group.layout.name == layout_name:
+            qtile.current_group.cmd_setlayout(layout_names['monadtall'])
+        else:
+            qtile.current_group.cmd_setlayout(layout_name)
+    return _toggle_layout
 
 # Keybinds
 keys = [
@@ -257,17 +258,20 @@ keys = [
         EzKey('M-<period>', lazy.next_screen()),
         EzKey('M-<comma>', lazy.prev_screen()),
 
-        ## Various window controls
+        # Various window controls
         EzKey('M-S-c', lazy.window.kill()),
         EzKey('M-C-c', lazy.function(center_window)),
         EzKey('M-S-<space>', lazy.layout.reset()),
-        EzKey('M-m', lazy.function(toggle_max_layout)),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
         EzKey('M-<space>', lazy.layout.flip()),
         EzKey('M-<Tab>', lazy.spawn(SWITCHER)),
         EzKey('M-S-<Tab>', lazy.window.bring_to_front()),
         EzKey('M-b', lazy.hide_show_bar()),
+
+        # Layout toggles
+        EzKey('M-m', lazy.function(toggle_layout('max'))),
+        EzKey('M-t', lazy.function(toggle_layout('tree'))),
 
         # Notification commands
         EzKey('M-S-b', lazy.function(notification('battery'))),
@@ -328,7 +332,8 @@ layout_theme = {
         }
 
 layout_names = {'monadtall': "tall",
-                'max': "max"
+                'max': "max",
+                'treetab': "tree"
         }
 
 layouts = [
@@ -339,6 +344,12 @@ layouts = [
         ),
         layout.Max(
         name = layout_names['max']
+        ),
+        layout.TreeTab(
+        name = layout_names['treetab'],
+        active_fg = colors['text'],
+        active_bg = colors['main'],
+        bg_color = colors['background']
         )
         ]
 
