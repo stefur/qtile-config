@@ -113,7 +113,6 @@ def push_spotify(client):
     try:
         if client.window.get_wm_class()[0] == "spotify":
             client.togroup('4')
-            qtile.current_group.layout_all()
 
     except IndexError:
         return
