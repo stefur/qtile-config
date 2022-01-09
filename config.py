@@ -64,13 +64,9 @@ def autostart():
 @hook.subscribe.client_name_updated
 def follow_url(client):
     """If Firefox is flagged as urgent, focus it"""
-    try:
-        if client.window.get_wm_class()[0] == "Navigator" and client.urgent is True:
+    if BROWSER in client.window.get_wm_class() and client.urgent is True:
             qtile.current_screen.set_group(client.group)
             client.group.focus(client)
-
-    except IndexError:
-        return
 
 @hook.subscribe.float_change
 def center_window(*args):
@@ -130,12 +126,8 @@ def fallback_default_layout(*args):
 @hook.subscribe.client_killed
 def minimize_discord(client):
     """Discord workaround to fix lingering residual window after its been closed to tray"""
-    try:
-        if client.window.get_wm_class()[0] == "discord":
+    if "discord" in client.window.get_wm_class():
             client.toggle_minimize()
-
-    except IndexError:
-       return
 
 @hook.subscribe.current_screen_change
 def warp_cursor():
