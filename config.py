@@ -110,12 +110,8 @@ def assign_app_group(client):
 @hook.subscribe.client_name_updated
 def push_spotify(client):
     """Push Spotify to correct group since it's wm_class setting is slow"""
-    try:
-        if client.window.get_wm_class()[0] == "spotify":
+    if "spotify" in client.window.get_wm_class():
             client.togroup('4')
-
-    except IndexError:
-        return
 
 @hook.subscribe.client_killed
 def fallback_default_layout(*args):
