@@ -234,6 +234,47 @@ def toggle_layout(layout_name):
             qtile.current_group.cmd_setlayout(layout_name)
     return _toggle_layout
 
+# Layouts
+layout_theme = {
+        'border_width': 2,
+        'border_focus': colors['main'],
+        'border_normal': colors['separator'],
+        }
+
+layout_names = {'monadtall': "tall",
+                'max': "max",
+                'treetab': "tree"
+        }
+
+layouts = [
+        layout.MonadTall(
+        **layout_theme,
+        single_border_width = 0,
+        name = layout_names['monadtall']
+        ),
+        layout.Max(
+        name = layout_names['max']
+        ),
+        layout.TreeTab(
+        name = layout_names['treetab'],
+        active_fg = colors['text'],
+        active_bg = colors['main'],
+        bg_color = colors['background']
+        )
+        ]
+
+floating_layout = layout.Floating(float_rules=[
+      *layout.Floating.default_float_rules,
+      Match(wm_class = 'Nm-connection-editor'),
+      Match(wm_class = 'pinentry-gtk-2'),
+      Match(wm_class = 'Lxappearance'),
+      Match(wm_class = 'Xfce4-taskmanager'),
+      Match(wm_class = 'VirtualBox Manager'),
+      Match(wm_class = 'pavucontrol'),
+      Match(title = 'Confirm File Replacing') # This is to float the copy/replace dialog of Pcmanfm
+    ],
+    **layout_theme)
+
 # Keybinds
 keys = [
         # Switch focus between windows
@@ -270,8 +311,8 @@ keys = [
         EzKey('M-b', lazy.hide_show_bar()),
 
         # Layout toggles
-        EzKey('M-m', lazy.function(toggle_layout('max'))),
-        EzKey('M-t', lazy.function(toggle_layout('tree'))),
+        EzKey('M-m', lazy.function(toggle_layout(layout_names['max']))),
+        EzKey('M-t', lazy.function(toggle_layout(layout_names['treetab']))),
 
         # Notification commands
         EzKey('M-S-b', lazy.function(notification('battery'))),
@@ -323,47 +364,6 @@ keys = [
         EzKey('M-C-<Escape>', lazy.spawn('poweroff')),
 
     ]
-
-# Layouts
-layout_theme = {
-        'border_width': 2,
-        'border_focus': colors['main'],
-        'border_normal': colors['separator'],
-        }
-
-layout_names = {'monadtall': "tall",
-                'max': "max",
-                'treetab': "tree"
-        }
-
-layouts = [
-        layout.MonadTall(
-        **layout_theme,
-        single_border_width = 0,
-        name = layout_names['monadtall']
-        ),
-        layout.Max(
-        name = layout_names['max']
-        ),
-        layout.TreeTab(
-        name = layout_names['treetab'],
-        active_fg = colors['text'],
-        active_bg = colors['main'],
-        bg_color = colors['background']
-        )
-        ]
-
-floating_layout = layout.Floating(float_rules=[
-      *layout.Floating.default_float_rules,
-      Match(wm_class = 'Nm-connection-editor'),
-      Match(wm_class = 'pinentry-gtk-2'),
-      Match(wm_class = 'Lxappearance'),
-      Match(wm_class = 'Xfce4-taskmanager'),
-      Match(wm_class = 'VirtualBox Manager'),
-      Match(wm_class = 'pavucontrol'),
-      Match(title = 'Confirm File Replacing') # This is to float the copy/replace dialog of Pcmanfm
-    ],
-    **layout_theme)
 
 # Groups
 group_settings = [
