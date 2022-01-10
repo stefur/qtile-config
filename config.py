@@ -221,10 +221,16 @@ def toggle_microphone(qtile):
 @lazy.function
 def toggle_layout(qtile, layout_name):
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
+    screen_rect = qtile.current_group.screen.get_rect()
     if qtile.current_group.layout.name == layout_name:
-        qtile.current_group.cmd_setlayout(layout_names['monadtall'])
+        qtile.current_group.layout.hide()
+        qtile.current_group.cmd_setlayout(layout_names['monadtall'])        
+        qtile.current_group.layout.show(screen_rect)
     else:
+        qtile.current_group.layout.hide()
         qtile.current_group.cmd_setlayout(layout_name)
+        qtile.current_group.layout.show(screen_rect)
+        
 
 # Layouts
 layout_theme = {
