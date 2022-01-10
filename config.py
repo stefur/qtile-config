@@ -32,7 +32,7 @@ modifier_keys = {
 wifi_interface = re.compile('^wlp.|^wlan.')
 steam_game = re.compile('^steam_app_.')
 
-NETWORK_INTERFACE = str(filter(wifi_interface.match, ni.interfaces()))
+NETWORK_INTERFACE = list(filter(wifi_interface.match, ni.interfaces()))[0]
 TERMINAL = 'alacritty'
 BROWSER = 'firefox'
 LAUNCHER = 'rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher'
@@ -142,23 +142,14 @@ def warp_cursor():
 def spawn_or_focus(qtile, app):
     """Check if the app being launched is already running, if so do nothing"""
     try:
-        app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
-        
-        # Get the window IDs of all open windows in a list
+        app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app        
         wids = set(qtile.windows_map)
-
-        # Get the window objects of each WID
         windows = {qtile.windows_map[wid].window for wid in wids}
-
-        # Select the window object with a matching WM class and find its group object
         window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
         win_on_group = str(window.get_wm_desktop() + 1)
         group = qtile.groups_map[win_on_group]
-
-        # Go to the group and set input forcus to the window (cursor will not warp)
         qtile.current_screen.set_group(group)
         window.set_input_focus()
-
     except IndexError:
         qtile.cmd_spawn(app)
 
