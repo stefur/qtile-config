@@ -68,6 +68,7 @@ def follow_url(client):
             qtile.current_screen.set_group(client.group)
             client.group.focus(client)
 
+@lazy.function
 @hook.subscribe.float_change
 def center_window(*args):
     """Centers all the floating windows"""
@@ -121,118 +122,109 @@ def fallback_default_layout(*args):
     if win_count > 2:
         return
 
-    qtile.cmd_to_layout_index(0)
+    qtile.current_group.cmd_setlayout(layout_names['monadtall'])
 
 @hook.subscribe.client_killed
 def minimize_discord(client):
     """Discord workaround to fix lingering residual window after its been closed to tray"""
     if "discord" in client.window.get_wm_class():
-            client.toggle_minimize()
+        client.toggle_minimize()
 
 @hook.subscribe.current_screen_change
 def warp_cursor():
     """Warp cursor to focused screen"""
     qtile.warp_to_screen()
 
-def run_or_raise(app):
+@lazy.function
+def spawn_or_focus(qtile, app):
     """Check if the app being launched is already running, if so do nothing"""
-    def run_cmd(qtile):
+    try:
+        app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
+        
+        # Get the window IDs of all open windows in a list
+        wids = list(qtile.windows_map)
+
+        # Get the window objects of each WID
+        windows = [qtile.windows_map[wid].window for wid in wids]
+
+        # Select the window object with a matching WM class and find its group object
+        window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
+        win_on_group = str(window.get_wm_desktop() + 1)
+        group = qtile.groups_map[win_on_group]
+
+        # Go to the group and set input forcus to the window (cursor will not warp)
+        qtile.current_screen.set_group(group)
+        window.set_input_focus()
+
+    except IndexError:
+        qtile.cmd_spawn(app)
+
+@lazy.function
+def notification(qtile, request):
+    """Used for mouse callbacks and keybinds to send notifications"""
+    if request == 'wifi':
         try:
-            app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
-            
-            # Get the window IDs of all open windows in a list
-            wids = list(qtile.windows_map)
+            interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
+            quality = interface['stats']['quality']
+            quality = round((quality / 70)*100)
+            ssid = str(interface['ESSID'], encoding = 'utf-8')
+            title = "Wifi"
+            message = f"{ssid}\nSignal strength: {quality}%"
+        except KeyError:
+            title = "Disconnected"
+            message = ""
 
-            # Get the window objects of each WID
-            windows = [qtile.windows_map[wid].window for wid in wids]
+    elif request == 'date':
+        today = datetime.today()
+        todaysdate = today.strftime("%-d %B")
+        weekday = today.strftime("%A")
+        week = datetime.today().isocalendar()[1]
+        title = f"{todaysdate}, ({weekday})"
+        message = f"Week {week}"
 
-            # Select the window object with a matching WM class and find its group object
-            window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
-            win_on_group = str(window.get_wm_desktop() + 1)
-            group = qtile.groups_map[win_on_group]
+    elif request == 'time':
+        now = datetime.now()
+        title = "The time is:"
+        message = now.strftime("%H:%M")
 
-            # Go to the group and set input forcus to the window (cursor will not warp)
-            qtile.current_screen.set_group(group)
-            window.set_input_focus()
-
-        except IndexError:
-            qtile.cmd_spawn(app)
-
-    return run_cmd
-
-def notification(request):
-    """Used for mouse callbacks from widgets to send notifications"""
-    def _notification(qtile):
-        """Also used for key combination shortcuts"""
-        if request == 'wifi':
-            try:
-                interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
-                quality = interface['stats']['quality']
-                quality = round((quality / 70)*100)
-                ssid = str(interface['ESSID'], encoding = 'utf-8')
-                title = "Wifi"
-                message = f"{ssid}\nSignal strength: {quality}%"
-            except KeyError:
-                title = "Disconnected"
-                message = ""
-
-        elif request == 'date':
-            today = datetime.today()
-            todaysdate = today.strftime("%-d %B")
-            weekday = today.strftime("%A")
-            week = datetime.today().isocalendar()[1]
-            title = f"{todaysdate}, ({weekday})"
-            message = f"Week {week}"
-
-        elif request == 'time':
-            now = datetime.now()
-            title = "The time is:"
-            message = now.strftime("%H:%M")
-
-        elif request == 'battery':
-            try:
-                title = "Battery status"
-                message = str(subprocess.check_output(
-                    ["acpi"],
-                    shell = True), encoding = 'utf-8')
-            except subprocess.CalledProcessError:
-                return
-
-        return send_notification(title, message, timeout = 2500, urgent = False)
-
-    return _notification
-
-def toggle_microphone():
-    """Run the toggle command and then send notification to report status of microphone"""
-    def _toggle_microphone(qtile):
+    elif request == 'battery':
         try:
-            subprocess.call(['amixer set Capture toggle'], shell = True)
-
-            message = subprocess.check_output(['amixer sget Capture'], shell = True).decode('utf-8')
-
-            if re.search('off', message):
-                message = "Muted"
-
-            elif re.search('on', message):
-                message = "Unmuted"
-
-            title = "Microphone"
-
-            send_notification(title, message, timeout = 2500, urgent = False)
-
+            title = "Battery status"
+            message = str(subprocess.check_output(
+                ["acpi"],
+                shell = True), encoding = 'utf-8')
         except subprocess.CalledProcessError:
             return
 
-    return _toggle_microphone
+    return send_notification(title, message, timeout = 2500, urgent = False)
 
-def toggle_layout(layout_name):
+@lazy.function
+def toggle_microphone(qtile):
+    """Run the toggle command and then send notification to report status of microphone"""
+    try:
+        subprocess.call(['amixer set Capture toggle'], shell = True)
+
+        message = subprocess.check_output(['amixer sget Capture'], shell = True).decode('utf-8')
+
+        if re.search('off', message):
+            message = "Muted"
+
+        elif re.search('on', message):
+            message = "Unmuted"
+
+        title = "Microphone"
+        send_notification(title, message, timeout = 2500, urgent = False)
+
+    except subprocess.CalledProcessError:
+        return
+
+@lazy.function
+def toggle_layout(qtile, layout_name):
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
-    def _toggle_layout(qtile):
-        if qtile.current_group.layout.name == layout_name:
-            qtile.current_group.cmd_setlayout(layout_names['monadtall'])
-        else:
-            qtile.current_group.cmd_setlayout(layout_name)
-    return _toggle_layout
+    if qtile.current_group.layout.name == layout_name:
+        qtile.current_group.cmd_setlayout(layout_names['monadtall'])
+    else:
+        qtile.current_group.cmd_setlayout(layout_name)
 
 # Layouts
 layout_theme = {
@@ -301,7 +293,7 @@ keys = [
 
         # Various window controls
         EzKey('M-S-c', lazy.window.kill()),
-        EzKey('M-C-c', lazy.function(center_window)),
+        EzKey('M-C-c', center_window()),
         EzKey('M-S-<space>', lazy.layout.reset()),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
@@ -311,24 +303,24 @@ keys = [
         EzKey('M-b', lazy.hide_show_bar()),
 
         # Layout toggles
-        EzKey('M-m', lazy.function(toggle_layout(layout_names['max']))),
-        EzKey('M-t', lazy.function(toggle_layout(layout_names['treetab']))),
+        EzKey('M-m', toggle_layout(layout_names['max'])),
+        EzKey('M-t', toggle_layout(layout_names['treetab'])),
 
         # Notification commands
-        EzKey('M-S-b', lazy.function(notification('battery'))),
-        EzKey('M-S-d', lazy.function(notification('date'))),
-        EzKey('M-S-w', lazy.function(notification('wifi'))),
-        EzKey('M-S-t', lazy.function(notification('time'))),
+        EzKey('M-S-b', notification('battery')),
+        EzKey('M-S-d', notification('date')),
+        EzKey('M-S-w', notification('wifi')),
+        EzKey('M-S-t', notification('time')),
 
         # Some app shortcuts
-        EzKey('M-w', lazy.function(run_or_raise(BROWSER))),
+        EzKey('M-w', spawn_or_focus(BROWSER)),
         EzKey('M-<Return>', lazy.spawn(TERMINAL)),
-        EzKey('M-C-<Return>', lazy.spawn(FILE_MANAGER)),
-        EzKey('M-c', lazy.function(run_or_raise('signal-desktop'))),
+        EzKey('M-C-<Return>', spawn_or_focus(FILE_MANAGER)),
+        EzKey('M-c', spawn_or_focus('signal-desktop')),
         EzKey('M-r', lazy.spawn(LAUNCHER)),
-        EzKey('M-d', lazy.function(run_or_raise('discord'))),
-        EzKey('M-s', lazy.function(run_or_raise('spotify'))),
-        EzKey('M-g', lazy.function(run_or_raise('steam-native'))),
+        EzKey('M-d', spawn_or_focus('discord')),
+        EzKey('M-s', spawn_or_focus('spotify')),
+        EzKey('M-g', spawn_or_focus('steam-native')),
         EzKey('M-p', lazy.spawn('passmenu.sh')),
         EzKey('M-n', lazy.spawn(f'{TERMINAL} -e newsboat')),
 
@@ -354,7 +346,7 @@ keys = [
         EzKey('<XF86AudioRaiseVolume>', lazy.widget['volumectrl'].increase_vol()),
 
         # Microphone toggle muted/unmuted
-        EzKey('M-q', lazy.function(toggle_microphone())),
+        EzKey('M-q', toggle_microphone()),
 
         # System controls
         EzKey('M-l', lazy.spawn('lock.sh')),
@@ -444,7 +436,7 @@ widgets = [
                 ),
             NowPlaying(
                 mouse_callbacks = {'Button1': lazy.spawn(f'{MUSIC_CTRL}PlayPause'),
-                                   'Button3': lazy.function(run_or_raise('spotify'))}
+                                   'Button3': spawn_or_focus('spotify')}
                 ),
             widget.Systray(
                 padding = 12,
@@ -465,7 +457,7 @@ widgets = [
                 background = colors['background'],
                 format = '%H:%M',
                 padding = 0,
-                mouse_callbacks = {'Button1': lazy.function(notification('date')),
+                mouse_callbacks = {'Button1': notification('date'),
                                    'Button3': lazy.spawn('python -m webbrowser https://kalender.se')
                 }
                 ),
@@ -505,7 +497,7 @@ if os.path.isfile('/usr/bin/acpi'):
         update_interval = 7,
         padding = 0,
         mouse_callbacks = { 'Button3': lazy.spawn(f'{TERMINAL} -e nmtui'),
-                            'Button1': lazy.function(notification('wifi'))}
+                            'Button1': notification('wifi')}
         ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],
@@ -516,7 +508,7 @@ if os.path.isfile('/usr/bin/acpi'):
         padding = 0,
         foreground = colors['main'],
         background = colors['background'],
-        mouse_callbacks = { 'Button1': lazy.function(notification('battery'))}
+        mouse_callbacks = { 'Button1': notification('battery')}
         ))
     widgets.insert(-3, widget.Sep(
         foreground = colors['background'],
