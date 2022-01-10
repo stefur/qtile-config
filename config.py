@@ -140,7 +140,7 @@ def warp_cursor():
 
 @lazy.function
 def spawn_or_focus(qtile, app):
-    """Check if the app being launched is already running, if so do nothing"""
+    """Check if the app being launched is already running, if so focus it"""
     try:
         app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app        
         wids = set(qtile.windows_map)
