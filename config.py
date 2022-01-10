@@ -143,8 +143,7 @@ def spawn_or_focus(qtile, app):
     """Check if the app being launched is already running, if so focus it"""
     try:
         app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app        
-        wids = set(qtile.windows_map)
-        windows = {qtile.windows_map[wid].window for wid in wids}
+        windows = set(qtile.windows_map[wid].window for wid in qtile.windows_map)
         window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
         win_on_group = str(window.get_wm_desktop() + 1)
         group = qtile.groups_map[win_on_group]

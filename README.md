@@ -33,11 +33,8 @@ def spawn_or_focus(qtile, app):
         # Check if the app is in the dict first, otherwise just use the app as wm_class
         app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app
         
-        # Get the window IDs of all open windows
-        wids = set(qtile.windows_map)
-
-        # Get the windows of each WID
-        windows = {qtile.windows_map[wid].window for wid in wids}
+        # Get the windows of all open windows
+        windows = set(qtile.windows_map[wid].window for wid in qtile.windows_map)
 
         # Select the window with a matching WM class and find its group
         window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
