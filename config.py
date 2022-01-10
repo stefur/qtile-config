@@ -100,7 +100,7 @@ def assign_app_group(client):
     try:
         wm_class = client.window.get_wm_class()[0]
         group = '2' if steam_game.search(wm_class) else set(key for key, value in group_assignments.items() if wm_class in value)
-        client.togroup(str(group))
+        client.togroup(''.join(group))
     except IndexError:
         return
 
