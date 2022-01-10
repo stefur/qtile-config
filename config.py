@@ -44,7 +44,7 @@ MUSIC_CTRL = ('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify '
 group_assignments = {
     '1': ['Navigator'],
     '2': ['valheim.x86_64', 'battle.net.exe', 'wowclassic.exe', 'ck3', 'paradox launcher'],
-    '3': ['claws-mail', 'discord', 'signal'],
+    '3': ['discord', 'signal'],
     '4': ['spotify'],
     '5': ['Steam'],
 }
@@ -122,7 +122,10 @@ def fallback_default_layout(*args):
     if win_count > 2:
         return
 
-    qtile.current_group.cmd_setlayout(layout_names['monadtall'])
+    screen_rect = qtile.current_group.screen.get_rect()
+    qtile.current_group.layout.hide()
+    qtile.current_group.cmd_setlayout(layout_names['monadtall'])        
+    qtile.current_group.layout.show(screen_rect)
 
 @hook.subscribe.client_killed
 def minimize_discord(client):
@@ -239,9 +242,9 @@ layout_theme = {
         'border_normal': colors['separator'],
         }
 
-layout_names = {'monadtall': "tall",
-                'max': "max",
-                'treetab': "tree"
+layout_names = {'monadtall': "tall~",
+                'max': "max~",
+                'treetab': "tree~"
         }
 
 layouts = [
