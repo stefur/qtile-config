@@ -32,7 +32,7 @@ modifier_keys = {
 wifi_interface = re.compile('^wlp.|^wlan.')
 steam_game = re.compile('^steam_app_.')
 
-NETWORK_INTERFACE = list(filter(wifi_interface.match, ni.interfaces()))[0]
+NETWORK_INTERFACE = str(filter(wifi_interface.match, ni.interfaces()))
 TERMINAL = 'alacritty'
 BROWSER = 'firefox'
 LAUNCHER = 'rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher'
