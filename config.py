@@ -99,8 +99,8 @@ def assign_app_group(client):
     """Decides which apps go where when they are launched"""
     try:
         wm_class = client.window.get_wm_class()[0]
-        group = '2' if steam_game.search(wm_class) else list(k for k, v in group_assignments.items() if wm_class in v)[0]
-        client.togroup(group)
+        group = '2' if steam_game.search(wm_class) else set(key for key, value in group_assignments.items() if wm_class in value)
+        client.togroup(str(group))
     except IndexError:
         return
 
