@@ -153,7 +153,7 @@ You can find all of it in [battery.py](https://github.com/stefur/qtile-config/bl
 ## Spotify widget
 A custom Spotify widget that uses DBus to pick up signals from Spotify to display current playback status and information in the bar in the format of `artist - song`. It uses some truncation that can be modified, as well as colors and playback icons. Also allows for playback control via mouse callbacks.
 
-Find it all in [spotify.py](https://github.com/stefur/qtile-config/blob/main/volume.py).
+Find it all in [spotify.py](https://github.com/stefur/qtile-config/blob/main/spotify.py).
 
 ## Discord client close and minimize fix
 Discord is not minimizing properly on window kill/close. This is an issue specific for my laptop and I have no idea why. The issues results in a weird window artifact remaining on screen every time. With a hook on window kill Discord is toggled to actually minimize to tray as it should.
