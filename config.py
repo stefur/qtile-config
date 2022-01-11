@@ -99,7 +99,7 @@ def assign_app_group(client):
     """Decides which apps go where when they are launched"""
     try:
         wm_class = client.window.get_wm_class()[0]
-        group = '2' if steam_game.search(wm_class) else set(key for key, value in group_assignments.items() if wm_class in value)
+        group = '2' if steam_game.search(wm_class) else [key for key, value in group_assignments.items() if wm_class in value][0]
         client.togroup(''.join(group))
     except IndexError:
         return
@@ -143,12 +143,13 @@ def spawn_or_focus(qtile, app):
     """Check if the app being launched is already running, if so focus it"""
     try:
         app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app        
-        windows = set(qtile.windows_map[wid].window for wid in qtile.windows_map)
-        window = [window for window in windows if app_wm_class in window.get_wm_class()][0]
-        win_on_group = str(window.get_wm_desktop() + 1)
-        group = qtile.groups_map[win_on_group]
+        open_windows = set(qtile.windows_map[wid].window for wid in qtile.windows_map)
+        find_window = [window for window in open_windows if app_wm_class in window.get_wm_class()][0]
+        group_number = str(find_window.get_wm_desktop() + 1)
+        group = qtile.groups_map[group_number]
+        select_window = [window for window in group.windows if find_window.wid == window.wid][0]
         qtile.current_screen.set_group(group)
-        window.set_input_focus()
+        qtile.current_group.focus(select_window)
     except IndexError:
         qtile.cmd_spawn(app)
 
@@ -215,14 +216,12 @@ def toggle_microphone(qtile):
 def toggle_layout(qtile, layout_name):
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
     screen_rect = qtile.current_group.screen.get_rect()
+    qtile.current_group.layout.hide()
     if qtile.current_group.layout.name == layout_name:
-        qtile.current_group.layout.hide()
         qtile.current_group.cmd_setlayout(layout_names['monadtall'])        
-        qtile.current_group.layout.show(screen_rect)
     else:
-        qtile.current_group.layout.hide()
         qtile.current_group.cmd_setlayout(layout_name)
-        qtile.current_group.layout.show(screen_rect)
+    qtile.current_group.layout.show(screen_rect)
         
 
 # Layouts
