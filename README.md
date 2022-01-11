@@ -7,8 +7,17 @@ This is my configuration for [Qtile](https://github.com/qtile/qtile). It's geare
 Some functionality here may be of interest to others, so I've tried to summarize them here. Feedback and suggestions are very welcome.
 
 - [Spawn or focus application](#spawn-or-focus)
-- [Heading](#heading-1)
-- [Heading](#heading-2)
+- [Focus browser if urgent](#focus-browser-if-urgent)
+- [Spotify group assign workaround](#spotify-group-assign-workaround)
+- [Simple layout toggle](#simple-layout-toggle)
+- [Fallback to default layout](#fallback-to-default-layout)
+- [Volume widget only updates when necessary](#volume-widget-only-updates-when-necessary)
+- [Battery widget with battery level icons](#battery-widget-with-battery-level-icons)
+- [Spotify widget](#spotify-widget)
+- [Discord client close and minimize fix](#discord-client-close-and-minimize-fix)
+
+
+
 
 
 ## Spawn or focus application 
@@ -117,8 +126,8 @@ def fallback_default_layout(*args):
     qtile.current_group.layout.show(screen_rect)
 ```
 
-## Volume widget that doesn't poll unless necessary
-E.g. unless volume is increased/decreased/muted.
+## Volume widget only updates when necessary
+E.g. when volume is increased/decreased/muted.
 
 *To be updated*
 
@@ -127,12 +136,12 @@ Using symbols from Nerd Fonts.
 
 *To be updated*
 
-## Spotify widget  
+## Spotify widget
 Spotify widget that uses DBus to pick up signals from Spotify to display playback status and information. Also allows for playback control via mouse callbacks.
 
 *To be updated*
 
-## Discord client close/minimize fix
+## Discord client close and minimize fix
 Discord is not minimizing properly on window kill/close. This is an issue specific for my laptop and I have no idea why. The issues results in a weird window artifact remaining on screen every time. With a hook on window kill Discord is toggled to actually minimize to tray as it should.
 
 ```python
