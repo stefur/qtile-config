@@ -270,20 +270,20 @@ keys = [
         # Switch focus between windows
         EzKey('M-<Down>', lazy.layout.down()),
         EzKey('M-<Up>', lazy.layout.up()),
-        EzKey('M-<Left>', lazy.layout.left()),
-        EzKey('M-<Right>', lazy.layout.right()),
+        EzKey('M-<Left>', lazy.layout.left().when(layout = layout_names['monadtall'])),
+        EzKey('M-<Right>', lazy.layout.right().when(layout = layout_names['monadtall'])),
 
         # Move windows between left/right columns or move up/down in current stack
-        EzKey('M-S-<Left>', lazy.layout.swap_left()),
-        EzKey('M-S-<Right>', lazy.layout.swap_right()),
-        EzKey('M-S-<Down>', lazy.layout.shuffle_down()),
-        EzKey('M-S-<Up>', lazy.layout.shuffle_up()),
+        EzKey('M-S-<Left>', lazy.layout.swap_left().when(layout = layout_names['monadtall'])),
+        EzKey('M-S-<Right>', lazy.layout.swap_right().when(layout = layout_names['monadtall'])),
+        EzKey('M-S-<Down>', lazy.layout.shuffle_down().when(layout = layout_names['monadtall']), lazy.layout.move_down().when(layout = layout_names['treetab'])),
+        EzKey('M-S-<Up>', lazy.layout.shuffle_up().when(layout = layout_names['monadtall']), lazy.layout.move_up().when(layout = layout_names['treetab'])),
 
         # Grow/shrink windows
-        EzKey('M-C-<Left>', lazy.layout.shrink_main()),
-        EzKey('M-C-<Right>', lazy.layout.grow_main()),
-        EzKey('M-C-<Down>', lazy.layout.shrink()),
-        EzKey('M-C-<Up>', lazy.layout.grow()),
+        EzKey('M-C-<Left>', lazy.layout.shrink_main().when(layout = layout_names['monadtall'])),
+        EzKey('M-C-<Right>', lazy.layout.grow_main().when(layout = layout_names['monadtall'])),
+        EzKey('M-C-<Down>', lazy.layout.shrink().when(layout = layout_names['monadtall'])),
+        EzKey('M-C-<Up>', lazy.layout.grow().when(layout = layout_names['monadtall'])),
 
         # Move between screens
         EzKey('M-<period>', lazy.next_screen()),
@@ -327,6 +327,7 @@ keys = [
             EzKey('c', lazy.spawn('confedit.sh')),
             EzKey('q', lazy.spawn(f'{TERMINAL} -e vim ~/.config/qtile/')),
             EzKey('u', lazy.spawn(f'{TERMINAL} -e yay -Syu')),
+            EzKey('b', lazy.spawn(f'{TERMINAL} -e bluetoothctl')),
         ]),
 
         # ScratchPad terminal
