@@ -322,7 +322,7 @@ keys = [
         # Some app shortcuts
         EzKey('M-w', spawn_or_focus(BROWSER)),
         EzKey('M-<Return>', lazy.spawn(TERMINAL)),
-        EzKey('M-C-<Return>', spawn_or_focus(FILE_MANAGER)),
+        EzKey('M-C-<Return>', lazy.spawn(FILE_MANAGER)),
         EzKey('M-c', spawn_or_focus('signal-desktop')),
         EzKey('M-r', lazy.spawn(LAUNCHER)),
         EzKey('M-d', spawn_or_focus('discord')),
