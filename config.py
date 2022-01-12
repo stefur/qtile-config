@@ -247,9 +247,18 @@ layouts = [
         ),
         layout.TreeTab(
         name = layout_names['treetab'],
-        active_fg = colors['text'],
+        active_fg = colors['background'],
         active_bg = colors['main'],
-        bg_color = colors['background']
+        bg_color = colors['background'],
+        border_width = 0,
+        inactive_bg = colors['background'],
+        inactive_fg = colors['text'],
+        previous_on_rm = True,
+        urgent_fg = colors['urgent'],
+        urgent_bg = colors['background'],
+        sections = [''],
+        section_fg = colors['main'],
+        padding_left = 0
         )
         ]
 
