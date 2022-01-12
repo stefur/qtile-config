@@ -250,15 +250,17 @@ layouts = [
         active_fg = colors['background'],
         active_bg = colors['main'],
         bg_color = colors['background'],
-        border_width = 0,
-        inactive_bg = colors['background'],
+        border_width = 5,
+        inactive_bg = colors['secondary'],
         inactive_fg = colors['text'],
         previous_on_rm = True,
         urgent_fg = colors['urgent'],
-        urgent_bg = colors['background'],
+        urgent_bg = colors['secondary'],
         sections = [''],
         section_fg = colors['main'],
-        padding_left = 0
+        padding_left = 10,
+        padding_y = 8,
+        margin_y = 10 
         )
         ]
 
