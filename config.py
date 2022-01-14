@@ -390,7 +390,8 @@ groups.append(ScratchPad('scratchpad', [
         DropDown('term', TERMINAL,
         warp_pointer = False,
         height = 0.6,
-        y = 0.2)
+        y = 0.2,
+        opacity = 1)
         ]))
 
 # Mouse
