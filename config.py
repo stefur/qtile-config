@@ -247,6 +247,8 @@ layouts = [
         ),
         layout.TreeTab(
         name = layout_names['treetab'],
+        font = 'FiraCode Nerd Font Regular',
+        fontsize = 13,
         active_fg = colors['background'],
         active_bg = colors['main'],
         bg_color = colors['background'],
