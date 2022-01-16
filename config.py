@@ -111,21 +111,25 @@ def push_spotify(client):
             client.togroup('4')
 
 @hook.subscribe.client_killed
-def fallback_default_layout(*args):
-    """Reset a workspace to default layout when theres is only one window left"""
+def fallback_default_layout(client):
+    """Reset a group to default layout when theres is only one window left"""
     try:
-        win_count = len(qtile.current_group.windows)
-
+        win_count = len(client.group.windows)
     except AttributeError:
         win_count = 0
 
     if win_count > 2:
         return
 
-    screen_rect = qtile.current_group.screen.get_rect()
-    qtile.current_group.layout.hide()
-    qtile.current_group.cmd_setlayout(layout_names['monadtall'])        
-    qtile.current_group.layout.show(screen_rect)
+    screen = client.group.screen
+
+    if screen is None:
+        screen = qtile.current_group.screen
+    
+    screen_rect = screen.get_rect()
+    client.group.layout.hide()
+    client.group.cmd_setlayout(layout_names['monadtall'])        
+    client.group.layout.show(screen_rect)
 
 @hook.subscribe.client_killed
 def minimize_discord(client):

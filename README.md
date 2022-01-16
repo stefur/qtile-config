@@ -104,7 +104,6 @@ Toggle layout by name. Always go back to the default layout.
 ```python
 @lazy.function
 def toggle_layout(qtile, layout_name):
-    """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
     screen_rect = qtile.current_group.screen.get_rect()
     qtile.current_group.layout.hide()
     if qtile.current_group.layout.name == layout_name:
@@ -124,21 +123,24 @@ I don't use many different layouts, it's usually just the standard `monadtall`. 
 
 ```python
 @hook.subscribe.client_killed
-def fallback_default_layout(*args):
-    """Reset a workspace to default layout when theres is only one window left"""
+def fallback_default_layout(client):
     try:
-        win_count = len(qtile.current_group.windows)
-
+        win_count = len(client.group.windows)
     except AttributeError:
         win_count = 0
 
     if win_count > 2:
         return
 
-    screen_rect = qtile.current_group.screen.get_rect()
-    qtile.current_group.layout.hide()
-    qtile.current_group.cmd_setlayout(layout_names['monadtall'])        
-    qtile.current_group.layout.show(screen_rect)
+    screen = client.group.screen
+
+    if screen is None:
+        screen = qtile.current_group.screen
+    
+    screen_rect = screen.get_rect()
+    client.group.layout.hide()
+    client.group.cmd_setlayout(layout_names['monadtall'])        
+    client.group.layout.show(screen_rect)
 ```
 
 ## Volume widget only updates when necessary
@@ -161,7 +163,6 @@ Discord is not minimizing properly on window kill/close. This is an issue specif
 ```python
 @hook.subscribe.client_killed
 def minimize_discord(client):
-    """Discord workaround to fix lingering residual window after its been closed to tray"""
     if "discord" in client.window.get_wm_class():
         client.toggle_minimize()
 ```
