@@ -152,8 +152,15 @@ def spawn_or_focus(qtile, app):
         group_number = str(find_window.get_wm_desktop() + 1)
         group = qtile.groups_map[group_number]
         select_window = [window for window in group.windows if find_window.wid == window.wid][0]
-        qtile.current_screen.set_group(group)
-        qtile.current_group.focus(select_window)
+        
+        if qtile.current_window == select_window:
+            try:
+                qtile.current_layout.cmd_swap_main()
+            except AttributeError:
+                return
+        else:
+            qtile.current_screen.set_group(group)
+            qtile.current_group.focus(select_window)
     except IndexError:
         qtile.cmd_spawn(app)
 

@@ -66,6 +66,26 @@ In the keybinds the above method can be used as:
 EzKey('M-c', spawn_or_focus('signal-desktop'))
 ```
 
+Another behavior that might be desirable is to bring the window to main pane if the window is in the stack, similar to Xmonads `runOrRaiseMaster`. If so, add the following to the above code:
+
+```diff
+        select_window = [window for window in group.windows if find_window.wid == window.wid][0]
++      
++       if qtile.current_window == select_window:
++           try:
++               qtile.current_layout.cmd_swap_main()
++           except AttributeError:
++               return
++       else:
++           qtile.current_screen.set_group(group)
++           qtile.current_group.focus(select_window)
++
+-       qtile.current_screen.set_group(group)
+-       qtile.current_group.focus(select_window)
+    except IndexError:
+```
+This does however assume that the MonadTall layout is being used. But with little modification it can easily be adapted and use for other layouts as well.
+
 ## Focus browser if urgent  
 I don't like when applications take focus whenever the want, and for this reason the window activation is set to `urgent`. 
 However I did want to focus the browser whenever a URL is clicked, that's the only exception to the rule in my use case.
