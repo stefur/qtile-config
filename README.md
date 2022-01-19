@@ -41,14 +41,13 @@ from libqtile import qtile
 @lazy.function
 def spawn_or_focus(qtile, app):
     try:
-        app_wm_class = appcmd_to_wm_class.get(app) if app in appcmd_to_wm_class else app        
-        open_windows = set(qtile.windows_map[wid].window for wid in qtile.windows_map)
-        find_window = [window for window in open_windows if app_wm_class in window.get_wm_class()][0]
-        group_number = str(find_window.get_wm_desktop() + 1)
+        wm_class = appcmd_to_wm_class[app] if app in appcmd_to_wm_class else app        
+        matching_window = [qtile.windows_map[wid].window for wid in qtile.windows_map if wm_class in qtile.windows_map[wid].window.get_wm_class()][0]
+        group_number = str(matching_window.get_wm_desktop() + 1)
         group = qtile.groups_map[group_number]
-        select_window = [window for window in group.windows if find_window.wid == window.wid][0]
+        focus_window = [window for window in group.windows if matching_window.wid == window.wid][0]
         qtile.current_screen.set_group(group)
-        qtile.current_group.focus(select_window)
+        qtile.current_group.focus(focus_window)
     except IndexError:
         qtile.cmd_spawn(app)
 ```
@@ -69,19 +68,19 @@ EzKey('M-c', spawn_or_focus('signal-desktop'))
 Another behavior that might be desirable is to bring the window to main pane if the window is in the stack, similar to Xmonads `runOrRaiseMaster`. If so, add the following to the above code:
 
 ```diff
-        select_window = [window for window in group.windows if find_window.wid == window.wid][0]
-+      
-+       if qtile.current_window == select_window:
+        focus_window = [window for window in group.windows if matching_window.wid == window.wid][0]
++
++       if qtile.current_window == focus_window:
 +           try:
 +               qtile.current_layout.cmd_swap_main()
 +           except AttributeError:
 +               return
 +       else:
 +           qtile.current_screen.set_group(group)
-+           qtile.current_group.focus(select_window)
++           qtile.current_group.focus(focus_window)
 +
 -       qtile.current_screen.set_group(group)
--       qtile.current_group.focus(select_window)
+-       qtile.current_group.focus(focus_window)
     except IndexError:
 ```
 This does however assume that the MonadTall layout is being used. But with little modification it can easily be adapted and use for other layouts as well.
