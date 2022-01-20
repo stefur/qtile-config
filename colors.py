@@ -1,12 +1,11 @@
 """
-Defining colors for main config custom widgets
+Defining colors, using catppuccin atm
 """
 
 colors = {
-    'main':         '#85B298',
-    'secondary':    '#646664',
-    'background':   '#222222',
-    'text':         '#F1F3EF',
-    'separator':     '#434758',
-    'urgent':       '#ec7279'
+    'primary':      '#B5E8E0',      # Teal
+    'secondary':    '#6E6C7E',      # Gray 0
+    'background':   '#161320',      # Black 0
+    'text':         '#D9E0EE',      # White
+    'urgent':       '#F28FAD'       # Red
 }

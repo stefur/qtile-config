@@ -233,13 +233,12 @@ def toggle_layout(qtile, layout_name):
     else:
         qtile.current_group.cmd_setlayout(layout_name)
     qtile.current_group.layout.show(screen_rect)
-        
 
 # Layouts
 layout_theme = {
         'border_width': 2,
-        'border_focus': colors['main'],
-        'border_normal': colors['separator'],
+        'border_focus': colors['primary'],
+        'border_normal': colors['secondary'],
         }
 
 layout_names = {'monadtall': "tall~",
@@ -261,7 +260,7 @@ layouts = [
         font = 'FiraCode Nerd Font Regular',
         fontsize = 13,
         active_fg = colors['background'],
-        active_bg = colors['main'],
+        active_bg = colors['primary'],
         bg_color = colors['background'],
         border_width = 5,
         inactive_bg = colors['secondary'],
@@ -435,21 +434,21 @@ widgets = [
                 use_mouse_wheel = False,
                 padding = 6,
                 borderwidth = 3,
-                active = colors['main'],
+                active = colors['primary'],
                 inactive = colors['secondary'],
                 rounded = False,
                 highlight_color = colors['background'],
                 block_highlight_text_color = colors['background'],
                 highlight_method = 'block',
-                this_current_screen_border = colors['main'],
-                this_screen_border = colors['main'],
+                this_current_screen_border = colors['primary'],
+                this_screen_border = colors['primary'],
                 foreground = colors['text'],
                 urgent_alert_method = 'text',
                 urgent_text = colors['urgent'],
                 ),
             widget.CurrentLayout(
                 padding = 8,
-                foreground = colors['main']
+                foreground = colors['primary']
             ),
             widget.WindowName(
                 max_chars = 50,
@@ -473,7 +472,7 @@ widgets = [
                 ),
             widget.TextBox(
                 padding = 12,
-                foreground = colors['main'],
+                foreground = colors['primary'],
                 text = ""
                 ),
             widget.Clock(
@@ -496,7 +495,7 @@ widgets = [
 if os.path.isfile('/usr/bin/acpi'):
     widgets.insert(-3, widget.TextBox(
         padding = 12,
-        foreground = colors['main'],
+        foreground = colors['primary'],
         text = "墳"
         ))
     widgets.insert(-3, VolumeCtrl(
@@ -510,7 +509,7 @@ if os.path.isfile('/usr/bin/acpi'):
         ))
     widgets.insert(-3, widget.TextBox(
         padding = 12,
-        foreground = colors['main'],
+        foreground = colors['primary'],
         text = "直"
         ))
     widgets.insert(-3, widget.Wlan(
@@ -530,7 +529,7 @@ if os.path.isfile('/usr/bin/acpi'):
         ))
     widgets.insert(-3, CustomBattery(
         padding = 0,
-        foreground = colors['main'],
+        foreground = colors['primary'],
         background = colors['background'],
         mouse_callbacks = { 'Button1': notification('battery')}
         ))
