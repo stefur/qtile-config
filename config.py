@@ -121,7 +121,10 @@ def fallback_default_layout(client):
     if win_count > 2:
         return
 
-    screen = client.group.screen
+    try:
+        screen = client.group.screen
+    except AttributeError:
+        return
 
     if screen is None:
         screen = qtile.current_group.screen
@@ -343,7 +346,6 @@ keys = [
         EzKey('M-s', spawn_or_focus('spotify')),
         EzKey('M-g', spawn_or_focus('steam-native')),
         EzKey('M-p', lazy.spawn('passmenu.sh')),
-        EzKey('M-n', lazy.spawn(f'{TERMINAL} -e newsboat')),
 
         # KeyChords for some special actions
         KeyChord([MOD], 'k', [
@@ -353,8 +355,9 @@ keys = [
             EzKey('b', lazy.spawn(f'{TERMINAL} -e bluetoothctl')),
         ]),
 
-        # ScratchPad terminal
+        # ScratchPads
         EzKey('M-S-<Return>', lazy.group['scratchpad'].dropdown_toggle('term')),
+        EzKey('M-n', lazy.group['newsboat'].dropdown_toggle('news')),
 
         # Spotify controls, lacking real media keys on 65% keyboard
         EzKey('M-8', lazy.spawn(f'{MUSIC_CTRL}PlayPause')),
@@ -397,9 +400,17 @@ for i in groups:
     Key([MOD, 'shift'], i.name, lazy.window.togroup(i.name)),
     ])
 
-# ScratchPad
+# ScratchPads
 groups.append(ScratchPad('scratchpad', [
         DropDown('term', TERMINAL,
+        warp_pointer = False,
+        height = 0.6,
+        y = 0.2,
+        opacity = 1)
+        ]))
+
+groups.append(ScratchPad('newsboat', [
+        DropDown('news', f'{TERMINAL} -e newsboat',
         warp_pointer = False,
         height = 0.6,
         y = 0.2,
