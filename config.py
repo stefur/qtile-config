@@ -356,8 +356,8 @@ keys = [
         ]),
 
         # ScratchPads
-        EzKey('M-S-<Return>', lazy.group['scratchpad'].dropdown_toggle('term')),
-        EzKey('M-n', lazy.group['newsboat'].dropdown_toggle('news')),
+        EzKey('M-S-<Return>', lazy.group['scratchpad'].dropdown_toggle('terminal')),
+        EzKey('M-n', lazy.group['scratchpad'].dropdown_toggle('newsboat')),
 
         # Spotify controls, lacking real media keys on 65% keyboard
         EzKey('M-8', lazy.spawn(f'{MUSIC_CTRL}PlayPause')),
@@ -402,15 +402,12 @@ for i in groups:
 
 # ScratchPads
 groups.append(ScratchPad('scratchpad', [
-        DropDown('term', TERMINAL,
+        DropDown('terminal', TERMINAL,
         warp_pointer = False,
         height = 0.6,
         y = 0.2,
-        opacity = 1)
-        ]))
-
-groups.append(ScratchPad('newsboat', [
-        DropDown('news', f'{TERMINAL} -e newsboat',
+        opacity = 1),
+        DropDown('newsboat', f'{TERMINAL} -e newsboat',
         warp_pointer = False,
         height = 0.6,
         y = 0.2,
