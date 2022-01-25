@@ -68,31 +68,10 @@ def follow_url(client):
             qtile.current_screen.set_group(client.group)
             client.group.focus(client)
 
-@lazy.function
 @hook.subscribe.float_change
-def center_window(*args):
+def center_window():
     """Centers all the floating windows"""
-    client = qtile.current_window
-
-    if not client.floating or client.fullscreen: # Don't center if not floating or fullscreen
-        return
-
-    screen_rect = qtile.current_screen.get_rect()
-
-    center_x = screen_rect.x + screen_rect.width / 2
-    center_y = screen_rect.y + screen_rect.height / 2
-
-    x_pos = center_x - client.width / 2
-    y_pos = center_y - client.height / 2
-
-    x_pos = min(x_pos, screen_rect.x + screen_rect.width - client.width)
-    x_pos = max(x_pos, screen_rect.x)
-    y_pos = min(y_pos, screen_rect.y + screen_rect.height - client.height)
-    y_pos = max(y_pos, screen_rect.y)
-
-    client.x = int(round(x_pos))
-    client.y = int(round(y_pos))
-    qtile.current_group.layout_all()
+    qtile.current_window.cmd_center()
 
 @hook.subscribe.client_new
 def assign_app_group(client):
@@ -317,7 +296,7 @@ keys = [
 
         # Various window controls
         EzKey('M-S-c', lazy.window.kill()),
-        EzKey('M-C-c', center_window()),
+        EzKey('M-C-c', lazy.window.center()),
         EzKey('M-S-<space>', lazy.layout.reset()),
         EzKey('M-f', lazy.window.toggle_fullscreen()),
         EzKey('M-S-f', lazy.window.toggle_floating()),
