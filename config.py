@@ -71,7 +71,10 @@ def follow_url(client):
 @hook.subscribe.float_change
 def center_window():
     """Centers all the floating windows"""
-    qtile.current_window.cmd_center()
+    try:
+        qtile.current_window.cmd_center()
+    except AttributeError:
+        return
 
 @hook.subscribe.client_new
 def assign_app_group(client):
