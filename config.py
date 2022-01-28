@@ -86,6 +86,21 @@ def assign_app_group(client):
     except IndexError:
         return
 
+@hook.subscribe.client_new
+def toggle_fullscreen_off(client):
+    """Toggle fullscreen off in case there's any window fullscreened in the group"""
+    try:
+        group = client.group
+    except AttributeError:
+        return
+
+    if group is None:
+        group = qtile.current_group
+   
+    for window in group.windows:
+        if window.fullscreen:
+            window.toggle_fullscreen()
+
 @hook.subscribe.client_name_updated
 def push_spotify(client):
     """Push Spotify to correct group since it's wm_class setting is slow"""
