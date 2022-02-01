@@ -522,9 +522,6 @@ widgets = [
         max_chars=50,
         empty_group_string="Desktop",
     ),
-    widget.Spacer(
-        length=bar.STRETCH,
-    ),
     NowPlaying(
         mouse_callbacks={
             "Button1": lazy.spawn(f"{MUSIC_CTRL}PlayPause"),
