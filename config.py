@@ -42,9 +42,9 @@ wifi_prefix = ("wlp", "wlan")
 
 for interface in network_interfaces:
     if interface.startswith(wifi_prefix):
-        NETWORK_INTERFACE = interface
+        WIFI_INTERFACE = interface
     else:
-        NETWORK_INTERFACE = ""
+        WIFI_INTERFACE = ""
         logger.warning("Could not find a wifi interface.")
 
 TERMINAL = "alacritty"
@@ -216,7 +216,7 @@ def notification(qtile, request):
     """Used for mouse callbacks and keybinds to send notifications"""
     if request == "wifi":
         try:
-            interface = iwlib.get_iwconfig(NETWORK_INTERFACE)
+            interface = iwlib.get_iwconfig(WIFI_INTERFACE)
             quality = interface["stats"]["quality"]
             quality = round((quality / 70) * 100)
             ssid = str(interface["ESSID"], encoding="utf-8")
@@ -574,7 +574,7 @@ if os.path.isfile("/usr/bin/acpi"):
         widget.Wlan(
             format="{essid}",
             foreground=colors["text"],
-            interface=NETWORK_INTERFACE,
+            interface=WIFI_INTERFACE,
             disconnected_message="Disconnected",
             update_interval=7,
             padding=0,
