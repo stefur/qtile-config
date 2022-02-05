@@ -56,7 +56,7 @@ MUSIC_CTRL = (
 )
 
 group_assignments = {
-    "1": ("Navigator"),
+    "1": ("navigator"),
     "2": (
         "valheim.x86_64",
         "battle.net.exe",
@@ -67,7 +67,7 @@ group_assignments = {
     ),
     "3": ("discord", "signal"),
     "4": ("spotify"),
-    "5": ("Steam"),
+    "5": ("steam"),
 }
 
 appcmd_to_wm_class = {"signal-desktop": "signal", "steam-native": "Steam"}
@@ -102,7 +102,7 @@ def center_window():
 def assign_app_group(client):
     """Decides which apps go where when they are launched"""
     try:
-        wm_class = client.window.get_wm_class()[0]
+        wm_class = client.window.get_wm_class()[0].lower()
         for num in group_assignments:
             if wm_class.startswith(group_assignments[num]):
                 client.togroup(num)
