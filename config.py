@@ -2,12 +2,10 @@
 """Qtile config a la stefur"""
 
 import os
-import re
 import subprocess
 
 from datetime import datetime
 import iwlib
-import netifaces as ni
 
 from libqtile.config import (
     Key,
@@ -23,7 +21,7 @@ from libqtile.config import (
 )
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
-from libqtile.utils import send_notification
+from libqtile.utils import send_notification, logger
 
 from battery import CustomBattery
 from spotify import NowPlaying
@@ -39,10 +37,16 @@ modifier_keys = {
     "S": "shift",
 }
 
-wifi_interface = re.compile("^wlp.|^wlan.")
-steam_game = re.compile("^steam_app_.")
+network_interfaces = os.listdir("/sys/class/net")
+wifi_prefix = ("wlp", "wlan")
 
-NETWORK_INTERFACE = list(filter(wifi_interface.match, ni.interfaces()))[0]
+for interface in network_interfaces:
+    if interface.startswith(wifi_prefix):
+        NETWORK_INTERFACE = interface
+    else:
+        NETWORK_INTERFACE = ""
+        logger.warning("Could not find a wifi interface.")
+
 TERMINAL = "alacritty"
 BROWSER = "firefox"
 LAUNCHER = (
@@ -257,10 +261,10 @@ def toggle_microphone(qtile):
             "utf-8"
         )
 
-        if re.search("off", message):
+        if "off" in message:
             message = "Muted"
 
-        elif re.search("on", message):
+        elif "on" in message:
             message = "Unmuted"
 
         title = "Microphone"
