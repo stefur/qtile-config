@@ -43,9 +43,7 @@ wifi_prefix = ("wlp", "wlan")
 for interface in network_interfaces:
     if interface.startswith(wifi_prefix):
         WIFI_INTERFACE = interface
-    else:
-        WIFI_INTERFACE = ""
-        logger.warning("Could not find a wifi interface.")
+        break
 
 TERMINAL = "alacritty"
 BROWSER = "firefox"
@@ -108,7 +106,7 @@ def assign_app_group(client):
     try:
         wm_class = client.window.get_wm_class()[0].lower()
         for num in group_assignments:
-            if wm_class.startswith(group_assignments[num.lower()]):
+            if wm_class.startswith(group_assignments[num]):
                 client.togroup(num)
     except IndexError:
         return
