@@ -108,7 +108,7 @@ def assign_app_group(client):
     try:
         wm_class = client.window.get_wm_class()[0].lower()
         for num in group_assignments:
-            if wm_class.startswith(group_assignments[num].lower()):
+            if wm_class.startswith(group_assignments[num.lower()]):
                 client.togroup(num)
     except IndexError:
         return
