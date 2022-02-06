@@ -88,7 +88,7 @@ class NowPlaying(base._TextBox):
             self.displaytext.replace("\n", "")
             if len(self.displaytext) > 35:
                 self.displaytext = self.displaytext[:35]
-                self.displaytext += " ..."
+                self.displaytext += "…"
                 if ("(" in self.displaytext) and (")" not in self.displaytext):
                     self.displaytext += ")"
 
