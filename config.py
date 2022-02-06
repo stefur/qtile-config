@@ -170,8 +170,11 @@ def minimize_discord(client):
 @hook.subscribe.client_new
 def minimize_origin(client):
     """Force Origin to minimize to prevent it from choking Qtile"""
-    if "Origin" in client.window.get_name():
-        client.toggle_minimize()
+    try:
+        if "Origin" in client.window.get_name():
+            client.toggle_minimize()
+    except TypeError:
+        return
 
 
 @hook.subscribe.current_screen_change
