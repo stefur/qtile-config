@@ -192,6 +192,7 @@ def spawn_or_focus(qtile, app):
         if any(item.lower() in app for item in wm_class) and wm_desktop is not None:
             group = qtile.groups_map[str(wm_desktop + 1)]
             wid = window.wid
+            break
 
     if wid is None:
         qtile.cmd_spawn(app)
@@ -200,6 +201,7 @@ def spawn_or_focus(qtile, app):
     for window in group.windows:
         if wid == window.wid:
             focus_window = window
+            break
 
     if focus_window == qtile.current_window:
         try:
