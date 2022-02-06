@@ -103,9 +103,9 @@ def assign_app_group(client):
     """Decides which apps go where when they are launched"""
     try:
         wm_class = client.window.get_wm_class()
-        for num in group_assignments:
-            if any(item.startswith(group_assignments[num]) for item in wm_class):
-                client.togroup(num)
+        for group, apps in group_assignments.items():
+            if any(item.startswith(apps) for item in wm_class):
+                client.togroup(group)
     except IndexError:
         return
 
@@ -189,12 +189,13 @@ def spawn_or_focus(qtile, app):
     for window in open_windows:
         wm_class = window.get_wm_class()
         wm_desktop = window.get_wm_desktop()
-        if any(item.lower() in app for item in wm_class) and wm_desktop != None:
+        if any(item.lower() in app for item in wm_class) and wm_desktop is not None:
             group = qtile.groups_map[str(wm_desktop + 1)]
             wid = window.wid
 
     if wid is None:
-        return qtile.cmd_spawn(app)
+        qtile.cmd_spawn(app)
+        return
 
     for window in group.windows:
         if wid == window.wid:
@@ -215,10 +216,10 @@ def notification(qtile, request):
     """Used for mouse callbacks and keybinds to send notifications"""
     if request == "wifi":
         try:
-            interface = iwlib.get_iwconfig(WIFI_INTERFACE)
-            quality = interface["stats"]["quality"]
+            iface = iwlib.get_iwconfig(WIFI_INTERFACE)
+            quality = iface["stats"]["quality"]
             quality = round((quality / 70) * 100)
-            ssid = str(interface["ESSID"], encoding="utf-8")
+            ssid = str(iface["ESSID"], encoding="utf-8")
             title = "Wifi"
             message = f"{ssid}\nSignal strength: {quality}%"
         except KeyError:
@@ -247,7 +248,7 @@ def notification(qtile, request):
         except subprocess.CalledProcessError:
             return
 
-    return send_notification(title, message, timeout=2500, urgent=False)
+    send_notification(title, message, timeout=2500, urgent=False)
 
 
 @lazy.function
