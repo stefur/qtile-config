@@ -21,7 +21,7 @@ from libqtile.config import (
 )
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
-from libqtile.utils import send_notification, logger
+from libqtile.utils import send_notification
 
 from battery import CustomBattery
 from spotify import NowPlaying
@@ -58,7 +58,7 @@ MUSIC_CTRL = (
 )
 
 group_assignments = {
-    "1": ("navigator"),
+    "1": ("firefox"),
     "2": (
         "valheim.x86_64",
         "battle.net.exe",
@@ -69,11 +69,8 @@ group_assignments = {
     ),
     "3": ("discord", "signal"),
     "4": ("spotify"),
-    "5": ("steam"),
+    "5": ("Steam"),
 }
-
-appcmd_to_wm_class = {"signal-desktop": "signal", "steam-native": "Steam"}
-
 
 @hook.subscribe.startup_once
 def autostart():
@@ -104,9 +101,9 @@ def center_window():
 def assign_app_group(client):
     """Decides which apps go where when they are launched"""
     try:
-        wm_class = client.window.get_wm_class()[0].lower()
+        wm_class = client.window.get_wm_class()
         for num in group_assignments:
-            if wm_class.startswith(group_assignments[num]):
+            if any(item.startswith(group_assignments[num]) for item in wm_class):
                 client.togroup(num)
     except IndexError:
         return
@@ -186,30 +183,31 @@ def warp_cursor():
 @lazy.function
 def spawn_or_focus(qtile, app):
     """Check if the app being launched is already running, if so focus it"""
-    try:
-        wm_class = appcmd_to_wm_class[app] if app in appcmd_to_wm_class else app
-        matching_window = [
-            qtile.windows_map[wid].window
-            for wid in qtile.windows_map
-            if wm_class in qtile.windows_map[wid].window.get_wm_class()
-        ][0]
-        group_number = str(matching_window.get_wm_desktop() + 1)
-        group = qtile.groups_map[group_number]
-        focus_window = [
-            window for window in group.windows if matching_window.wid == window.wid
-        ][0]
+    open_windows = (qtile.windows_map[wid].window for wid in qtile.windows_map)
+    wid = None
+    for window in open_windows:
+        wm_class = window.get_wm_class()
+        wm_desktop = window.get_wm_desktop()
+        if any(item.lower() in app for item in wm_class) and wm_desktop != None:
+            group=qtile.groups_map[str(wm_desktop + 1)]
+            wid = window.wid
 
-        if qtile.current_window == focus_window:
-            try:
-                qtile.current_layout.cmd_swap_main()
-            except AttributeError:
-                return
-        else:
-            qtile.current_screen.set_group(group)
-            qtile.current_group.focus(focus_window)
+    if wid is None:
+        return qtile.cmd_spawn(app)
 
-    except IndexError:
-        qtile.cmd_spawn(app)
+    for window in group.windows:
+        if wid == window.wid:
+            focus_window = window
+
+    if focus_window == qtile.current_window:
+        try:
+            qtile.current_layout.cmd_swap_main()
+        except AttributeError:
+            return
+    else:
+        qtile.current_screen.set_group(group)
+        qtile.current_group.focus(focus_window)
+
 
 
 @lazy.function
