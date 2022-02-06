@@ -72,6 +72,7 @@ group_assignments = {
     "5": ("Steam"),
 }
 
+
 @hook.subscribe.startup_once
 def autostart():
     """Autostart things from script when qtile starts and hide the bar as default"""
@@ -189,7 +190,7 @@ def spawn_or_focus(qtile, app):
         wm_class = window.get_wm_class()
         wm_desktop = window.get_wm_desktop()
         if any(item.lower() in app for item in wm_class) and wm_desktop != None:
-            group=qtile.groups_map[str(wm_desktop + 1)]
+            group = qtile.groups_map[str(wm_desktop + 1)]
             wid = window.wid
 
     if wid is None:
@@ -207,7 +208,6 @@ def spawn_or_focus(qtile, app):
     else:
         qtile.current_screen.set_group(group)
         qtile.current_group.focus(focus_window)
-
 
 
 @lazy.function
