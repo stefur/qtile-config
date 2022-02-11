@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*-
 """Qtile config a la stefur"""
+
+from __future__ import annotations
+from typing import (Any, Dict, List, Tuple)
 
 import os
 import subprocess
@@ -22,6 +24,7 @@ from libqtile.config import (
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
+from libqtile.core.manager import Qtile
 
 from battery import CustomBattery
 from spotify import NowPlaying
@@ -30,14 +33,14 @@ from colors import colors
 
 MOD = "mod4"
 
-modifier_keys = {
+modifier_keys: Dict[str, str] = {
     "M": "mod4",
     "A": "mod1",
     "C": "control",
     "S": "shift",
 }
 
-network_interfaces = os.listdir("/sys/class/net")
+network_interfaces: List[str] = os.listdir("/sys/class/net")
 wifi_prefix = ("wlp", "wlan")
 
 for interface in network_interfaces:
@@ -57,9 +60,9 @@ MUSIC_CTRL = (
     "/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 )
 
-font_setting = ("FiraCode Nerd Font Regular", 13)
+font_setting: Tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
 
-group_assignments = {
+group_assignments: Dict[str, Tuple[str, ...]] = {
     "1": ("firefox"),
     "2": (
         "valheim.x86_64",
@@ -76,7 +79,7 @@ group_assignments = {
 
 
 @hook.subscribe.startup_once
-def autostart():
+def autostart() -> None:
     """Autostart things from script when qtile starts and hide the bar as default"""
     with subprocess.Popen("autostart.sh", shell=True) as process:
         hook.subscribe.shutdown(process.terminate)
@@ -84,7 +87,7 @@ def autostart():
 
 
 @hook.subscribe.client_name_updated
-def follow_url(client):
+def follow_url(client: Qtile) -> None:
     """If Firefox is flagged as urgent, focus it"""
     if BROWSER in client.window.get_wm_class() and client.urgent is True:
         qtile.current_screen.set_group(client.group)
@@ -92,7 +95,7 @@ def follow_url(client):
 
 
 @hook.subscribe.float_change
-def center_window():
+def center_window() -> None:
     """Centers all the floating windows"""
     try:
         qtile.current_window.cmd_center()
@@ -101,7 +104,7 @@ def center_window():
 
 
 @hook.subscribe.client_new
-def assign_app_group(client):
+def assign_app_group(client: Qtile) -> None:
     """Decides which apps go where when they are launched"""
     try:
         wm_class = client.window.get_wm_class()
@@ -113,7 +116,7 @@ def assign_app_group(client):
 
 
 @hook.subscribe.client_new
-def toggle_fullscreen_off(client):
+def toggle_fullscreen_off(client: Qtile) -> None:
     """Toggle fullscreen off in case there's any window fullscreened in the group"""
     try:
         group = client.group
@@ -129,14 +132,14 @@ def toggle_fullscreen_off(client):
 
 
 @hook.subscribe.client_name_updated
-def push_spotify(client):
+def push_spotify(client: Qtile) -> None:
     """Push Spotify to correct group since it's wm_class setting is slow"""
     if "spotify" in client.window.get_wm_class():
         client.togroup("4")
 
 
 @hook.subscribe.client_killed
-def fallback_default_layout(client):
+def fallback_default_layout(client: Qtile) -> None:
     """Reset a group to default layout when theres is only one window left"""
     try:
         win_count = len(client.group.windows)
@@ -161,14 +164,14 @@ def fallback_default_layout(client):
 
 
 @hook.subscribe.client_killed
-def minimize_discord(client):
+def minimize_discord(client: Qtile) -> None:
     """Discord workaround to fix lingering residual window after its been closed to tray"""
     if "discord" in client.window.get_wm_class():
         client.toggle_minimize()
 
 
 @hook.subscribe.client_new
-def minimize_origin(client):
+def minimize_origin(client: Qtile) -> None:
     """Force Origin to minimize to prevent it from choking Qtile"""
     try:
         if "Origin" in client.window.get_name():
@@ -178,13 +181,13 @@ def minimize_origin(client):
 
 
 @hook.subscribe.current_screen_change
-def warp_cursor():
+def warp_cursor() -> None:
     """Warp cursor to focused screen"""
     qtile.warp_to_screen()
 
 
 @lazy.function
-def spawn_or_focus(qtile, app):
+def spawn_or_focus(qtile: Qtile, app: str) -> None:
     """Check if the app being launched is already running, if so focus it"""
     open_windows = {qtile.windows_map[wid].window for wid in qtile.windows_map}
     wid = None
@@ -216,7 +219,7 @@ def spawn_or_focus(qtile, app):
 
 
 @lazy.function
-def notification(qtile, request):
+def notification(qtile: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
     if request == "wifi":
         try:
@@ -256,7 +259,7 @@ def notification(qtile, request):
 
 
 @lazy.function
-def toggle_microphone(qtile):
+def toggle_microphone(qtile: Qtile) -> None:
     """Run the toggle command and then send notification to report status of microphone"""
     try:
         subprocess.call(["amixer set Capture toggle"], shell=True)
@@ -279,7 +282,7 @@ def toggle_microphone(qtile):
 
 
 @lazy.function
-def toggle_layout(qtile, layout_name):
+def toggle_layout(qtile: Qtile, layout_name: str) -> None:
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
     screen_rect = qtile.current_group.screen.get_rect()
     qtile.current_group.layout.hide()
@@ -291,13 +294,13 @@ def toggle_layout(qtile, layout_name):
 
 
 # Layouts
-layout_theme = {
+layout_theme: Dict[str, Any] = {
     "border_width": 2,
     "border_focus": colors["primary"],
     "border_normal": colors["secondary"],
 }
 
-layout_names = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
+layout_names: Dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
 
 layouts = [
     layout.MonadTall(
