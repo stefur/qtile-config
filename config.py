@@ -1,7 +1,7 @@
 """Qtile config a la stefur"""
 
 from __future__ import annotations
-from typing import (Any, Dict, List, Tuple)
+from typing import Any, Dict, List, Tuple
 
 import os
 import subprocess
@@ -50,9 +50,7 @@ for interface in network_interfaces:
 
 TERMINAL = "alacritty"
 BROWSER = "firefox"
-LAUNCHER = (
-    "rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher"
-)
+LAUNCHER = "rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher"
 SWITCHER = "rofi -show window -modi window -theme ~/.config/rofi/style_switcher"
 FILE_MANAGER = "pcmanfm"
 MUSIC_CTRL = (
