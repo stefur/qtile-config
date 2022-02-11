@@ -57,6 +57,8 @@ MUSIC_CTRL = (
     "/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 )
 
+font_setting = ("FiraCode Nerd Font Regular", 13)
+
 group_assignments = {
     "1": ("firefox"),
     "2": (
@@ -304,8 +306,8 @@ layouts = [
     layout.Max(name=layout_names["max"]),
     layout.TreeTab(
         name=layout_names["treetab"],
-        font="FiraCode Nerd Font Regular",
-        fontsize=13,
+        font=font_setting[0],
+        fontsize=font_setting[1],
         active_fg=colors["background"],
         active_bg=colors["primary"],
         bg_color=colors["background"],
@@ -490,8 +492,8 @@ mouse = [
 
 # Widgets & extension defaults
 widget_defaults = dict(
-    font="FiraCode Nerd Font Regular",
-    fontsize=13,
+    font=font_setting[0],
+    fontsize=font_setting[1],
     background=colors["background"],
     foreground=colors["text"],
 )
