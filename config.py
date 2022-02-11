@@ -1,7 +1,6 @@
 """Qtile config a la stefur"""
 
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple
 
 import os
 import subprocess
@@ -24,12 +23,18 @@ from libqtile.config import (
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
-from libqtile.core.manager import Qtile
 
 from battery import CustomBattery
 from spotify import NowPlaying
 from volume import VolumeCtrl
 from colors import colors
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, List, Optional, Tuple
+    from libqtile.window import Window
+    from libqtile.core.manager import Qtile
 
 MOD = "mod4"
 
@@ -41,7 +46,7 @@ modifier_keys: Dict[str, str] = {
 }
 
 network_interfaces: List[str] = os.listdir("/sys/class/net")
-wifi_prefix = ("wlp", "wlan")
+wifi_prefix: Tuple[str, ...] = ("wlp", "wlan")
 
 for interface in network_interfaces:
     if interface.startswith(wifi_prefix):
@@ -50,17 +55,16 @@ for interface in network_interfaces:
 
 TERMINAL = "alacritty"
 BROWSER = "firefox"
-LAUNCHER = "rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher"
+LAUNCHER = (
+    "rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher"
+)
 SWITCHER = "rofi -show window -modi window -theme ~/.config/rofi/style_switcher"
 FILE_MANAGER = "pcmanfm"
-MUSIC_CTRL = (
-    "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify "
-    "/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
-)
+MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 
 font_setting: Tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
 
-group_assignments: Dict[str, Tuple[str, ...]] = {
+group_assignments: Dict[str, Any[str, ...]] = {
     "1": ("firefox"),
     "2": (
         "valheim.x86_64",
@@ -81,13 +85,15 @@ def autostart() -> None:
     """Autostart things from script when qtile starts and hide the bar as default"""
     with subprocess.Popen("autostart.sh", shell=True) as process:
         hook.subscribe.shutdown(process.terminate)
+    assert qtile is not None
     qtile.cmd_hide_show_bar()
 
 
 @hook.subscribe.client_name_updated
-def follow_url(client: Qtile) -> None:
+def follow_url(client: Window) -> None:
     """If Firefox is flagged as urgent, focus it"""
     if BROWSER in client.window.get_wm_class() and client.urgent is True:
+        assert qtile is not None
         qtile.current_screen.set_group(client.group)
         client.group.focus(client)
 
@@ -96,13 +102,14 @@ def follow_url(client: Qtile) -> None:
 def center_window() -> None:
     """Centers all the floating windows"""
     try:
+        assert qtile is not None
         qtile.current_window.cmd_center()
     except AttributeError:
         return
 
 
 @hook.subscribe.client_new
-def assign_app_group(client: Qtile) -> None:
+def assign_app_group(client: Window) -> None:
     """Decides which apps go where when they are launched"""
     try:
         wm_class = client.window.get_wm_class()
@@ -114,7 +121,7 @@ def assign_app_group(client: Qtile) -> None:
 
 
 @hook.subscribe.client_new
-def toggle_fullscreen_off(client: Qtile) -> None:
+def toggle_fullscreen_off(client: Window) -> None:
     """Toggle fullscreen off in case there's any window fullscreened in the group"""
     try:
         group = client.group
@@ -122,6 +129,7 @@ def toggle_fullscreen_off(client: Qtile) -> None:
         return
 
     if group is None:
+        assert qtile is not None
         group = qtile.current_group
 
     for window in group.windows:
@@ -130,14 +138,14 @@ def toggle_fullscreen_off(client: Qtile) -> None:
 
 
 @hook.subscribe.client_name_updated
-def push_spotify(client: Qtile) -> None:
+def push_spotify(client: Window) -> None:
     """Push Spotify to correct group since it's wm_class setting is slow"""
     if "spotify" in client.window.get_wm_class():
         client.togroup("4")
 
 
 @hook.subscribe.client_killed
-def fallback_default_layout(client: Qtile) -> None:
+def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
     try:
         win_count = len(client.group.windows)
@@ -153,6 +161,7 @@ def fallback_default_layout(client: Qtile) -> None:
         return
 
     if screen is None:
+        assert qtile is not None
         screen = qtile.current_group.screen
 
     screen_rect = screen.get_rect()
@@ -162,14 +171,14 @@ def fallback_default_layout(client: Qtile) -> None:
 
 
 @hook.subscribe.client_killed
-def minimize_discord(client: Qtile) -> None:
+def minimize_discord(client: Window) -> None:
     """Discord workaround to fix lingering residual window after its been closed to tray"""
     if "discord" in client.window.get_wm_class():
         client.toggle_minimize()
 
 
 @hook.subscribe.client_new
-def minimize_origin(client: Qtile) -> None:
+def minimize_origin(client: Window) -> None:
     """Force Origin to minimize to prevent it from choking Qtile"""
     try:
         if "Origin" in client.window.get_name():
@@ -181,6 +190,7 @@ def minimize_origin(client: Qtile) -> None:
 @hook.subscribe.current_screen_change
 def warp_cursor() -> None:
     """Warp cursor to focused screen"""
+    assert qtile is not None
     qtile.warp_to_screen()
 
 
@@ -438,7 +448,7 @@ keys = [
 ]
 
 # Groups
-group_settings = [
+group_settings: List[Any] = [
     ("1", {"label": "1", "layout": layout_names["monadtall"]}),
     ("2", {"label": "2", "layout": layout_names["monadtall"]}),
     ("3", {"label": "3", "layout": layout_names["monadtall"]}),
@@ -447,7 +457,7 @@ group_settings = [
     ("6", {"label": "6", "layout": layout_names["monadtall"]}),
 ]
 
-groups = [Group(name, **kwargs) for name, kwargs in group_settings]
+groups: List[Any] = [Group(name, **kwargs) for name, kwargs in group_settings]
 
 for i in groups:
     keys.extend(
@@ -619,7 +629,7 @@ screens = [Screen(top=bar)]
 
 # Misc
 dgroups_key_binder = None
-dgroups_app_rules = []
+dgroups_app_rules = []  # type: List
 follow_mouse_focus = True
 bring_front_click = True
 cursor_warp = False
