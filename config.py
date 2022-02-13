@@ -558,7 +558,7 @@ widgets = [
 ]
 
 # Check if the computer is a laptop, and add some extra widgets if it is
-if os.path.isfile("/sys/class/power_supply/BAT0"):
+if os.path.isdir("/sys/class/power_supply/BAT0"):
     widgets.insert(
         -3, widget.TextBox(padding=12, foreground=colors["primary"], text="墳")
     )
