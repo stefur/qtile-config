@@ -296,7 +296,7 @@ def toggle_layout(qtile: Qtile, layout_name: str) -> None:
 
 
 # Layouts
-layout_theme: Dict[str, Any] = {
+layout_theme: Dict[str, int | str] = {
     "border_width": 2,
     "border_focus": colors["primary"],
     "border_normal": colors["secondary"],
@@ -442,7 +442,7 @@ keys = [
 ]
 
 # Groups
-group_settings: List[Any] = [
+group_settings: List[Tuple[str, Dict[str, Any]]] = [
     ("1", {"label": "1", "layout": layout_names["monadtall"]}),
     ("2", {"label": "2", "layout": layout_names["monadtall"]}),
     ("3", {"label": "3", "layout": layout_names["monadtall"]}),
@@ -558,7 +558,7 @@ widgets = [
 ]
 
 # Check if the computer is a laptop, and add some extra widgets if it is
-if os.path.isfile("/usr/bin/acpi"):
+if os.path.isfile("/sys/class/power_supply/BAT0"):
     widgets.insert(
         -3, widget.TextBox(padding=12, foreground=colors["primary"], text="墳")
     )

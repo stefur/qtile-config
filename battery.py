@@ -1,12 +1,17 @@
 """Requires Nerd fonts"""
+from __future__ import annotations
 
-import subprocess
-import re
+from typing import TYPE_CHECKING
+
+import psutil  # type: ignore
 
 from libqtile.widget import base
 from libqtile.log_utils import logger
 
 from colors import colors
+
+if TYPE_CHECKING:
+    from typing import Dict
 
 
 class CustomBattery(base.ThreadPoolText):
@@ -19,9 +24,7 @@ class CustomBattery(base.ThreadPoolText):
         base.ThreadPoolText.__init__(self, "", **config)
         self.add_defaults(CustomBattery.defaults)
 
-        self.find_battery_level = re.compile(r"\, (\d?\d?\d?)%")
-
-        self.battery_level_icons = {
+        self.battery_level_icons: Dict[str, int] = {
             "": 95,
             "": 90,
             "": 80,
@@ -37,29 +40,28 @@ class CustomBattery(base.ThreadPoolText):
 
         self.text = self.poll()
 
-    def poll(self):
-        """Get the status from ACPI, return the corresponding icon"""
+    def poll(self) -> str:
+        """Get the battery level, return the corresponding icon"""
 
-        battery = subprocess.check_output(["acpi"], shell=True).decode("utf-8")
-        battery_level = int(self.find_battery_level.search(battery).groups()[0])
+        battery = psutil.sensors_battery()
 
-        if re.search(r"Discharging", battery):
+        if battery.power_plugged is False:
             battery_icon = next(
                 iter(
                     {
                         k: v
                         for k, v in self.battery_level_icons.items()
-                        if battery_level >= v
+                        if battery.percent >= v
                     }
                 )
             )
-        elif re.search(r"Charging", battery):
-            battery_icon = ""
-        elif re.search(r"Not charging", battery):
+        elif battery.power_plugged is True and battery.percent == 100:
             battery_icon = ""
-        else:
-            logger.error(
-                "Cannot determine battery status. Is ACPI installed and working?"
-            )
 
-        return f"{battery_icon} <span foreground='{colors['text']}'>{battery_level}%</span>"
+        elif battery.power_plugged is True:
+            battery_icon = ""
+
+        else:
+            logger.error("Cannot determine battery status.")
+
+        return f"{battery_icon} <span foreground='{colors['text']}'>{battery.percent}%</span>"

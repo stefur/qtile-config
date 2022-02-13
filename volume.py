@@ -1,8 +1,14 @@
 """I don't want to poll alsa all the time but rather get the volume upon change"""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import subprocess
 import re
 from libqtile.widget import base
+
+if TYPE_CHECKING:
+    from typing import Dict
 
 
 class VolumeCtrl(base._TextBox):
@@ -22,7 +28,7 @@ class VolumeCtrl(base._TextBox):
         self.vol_value = re.compile(r"\[(\d?\d?\d?)%\]")
         self.text = self.get_vol()
 
-    def get_vol(self):
+    def get_vol(self) -> str:
         """Get the volume value"""
         vol = subprocess.check_output(["amixer sget Master"], shell=True).decode(
             "utf-8"
@@ -36,21 +42,21 @@ class VolumeCtrl(base._TextBox):
 
         return vol
 
-    def cmd_increase_vol(self):
+    def cmd_increase_vol(self) -> None:
         """Increase the volume and refresh volume and icon"""
 
         subprocess.call(["amixer -q sset Master 5%+"], shell=True)
         self.text = self.get_vol()
         self.bar.draw()
 
-    def cmd_decrease_vol(self):
+    def cmd_decrease_vol(self) -> None:
         """Decrease the volume and refresh volume and icon"""
 
         subprocess.call(["amixer -q sset Master 5%-"], shell=True)
         self.text = self.get_vol()
         self.bar.draw()
 
-    def cmd_mute(self):
+    def cmd_mute(self) -> None:
         """Toggle to mute/unmute volume and refresh icon"""
 
         subprocess.call(["amixer -q sset Master toggle"], shell=True)
