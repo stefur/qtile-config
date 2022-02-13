@@ -1,10 +1,17 @@
 """A custom widget to show what Spotify is playing, based on mpris2 widget. Requires Nerd fonts."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from dbus_next.constants import MessageType  # type: ignore
 
 from libqtile.log_utils import logger
 from libqtile.utils import add_signal_receiver
 from libqtile.widget import base
 from colors import colors
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, List
+    from dbus_next.message import Message
 
 
 class NowPlaying(base._TextBox):
@@ -44,22 +51,22 @@ class NowPlaying(base._TextBox):
             msg = "Unable to add signal receiver for when Spotify is closed."
             logger.warning(msg)
 
-    def updatemessage(self, updatemessage):
+    def updatemessage(self, updatemessage: Message) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
 
         if updatemessage.message_type != MessageType.SIGNAL:
             return
 
-        self.update(*updatemessage.body)
+        self.update_info(*updatemessage.body)
 
-    def closemessage(self, closemessage):
+    def closemessage(self, closemessage: Message) -> None:
         """Send the message that Spotify has been closed"""
         if closemessage.message_type != MessageType.SIGNAL:
             return
 
         self.closed(*closemessage.body)
 
-    def closed(self, name, old_owner, new_owner):
+    def closed(self, name: str, old_owner: str, new_owner: str) -> None:
         """If Spotify is closed, clear the text in the widget"""
 
         del new_owner
@@ -67,7 +74,12 @@ class NowPlaying(base._TextBox):
             self.text = ""
             self.bar.draw()
 
-    def update(self, interface_name, changed_properties, _invalidated_properties):
+    def update_info(
+        self,
+        interface_name: str,
+        changed_properties: Dict[str, Any],
+        _invalidated_properties: List[Any],
+    ) -> None:
         """Update song artist and title, including playback status"""
 
         del interface_name

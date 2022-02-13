@@ -6,7 +6,8 @@ import os
 import subprocess
 
 from datetime import datetime
-import iwlib
+from typing import TYPE_CHECKING
+import iwlib  # type: ignore
 
 from libqtile.config import (
     Key,
@@ -23,17 +24,15 @@ from libqtile.config import (
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
+from libqtile.backend.x11.window import Window
 
 from battery import CustomBattery
 from spotify import NowPlaying
 from volume import VolumeCtrl
 from colors import colors
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Tuple
-    from libqtile.window import Window
+    from typing import Any, Dict, List, Optional, Set, Tuple, Union
     from libqtile.core.manager import Qtile
 
 MOD = "mod4"
@@ -197,33 +196,28 @@ def warp_cursor() -> None:
 @lazy.function
 def spawn_or_focus(qtile: Qtile, app: str) -> None:
     """Check if the app being launched is already running, if so focus it"""
-    open_windows = {qtile.windows_map[wid].window for wid in qtile.windows_map}
-    wid = None
-    for window in open_windows:
-        wm_class = window.get_wm_class()
-        wm_desktop = window.get_wm_desktop()
-        if any(item.lower() in app for item in wm_class) and wm_desktop is not None:
-            group = qtile.groups_map[str(wm_desktop + 1)]
-            wid = window.wid
-            break
+    window = None
+    for w in qtile.windows_map.values():
+        if isinstance(w, Window):
+            wm_class = w.get_wm_class()
+            assert wm_class is not None
+            if any(item.lower() in app for item in wm_class):
+                window = w
+                group = w.group
+                group.cmd_toscreen(toggle=False)
+                break
 
-    if wid is None:
+    if window is None:
         qtile.cmd_spawn(app)
         return
 
-    for window in group.windows:
-        if wid == window.wid:
-            focus_window = window
-            break
-
-    if focus_window == qtile.current_window:
+    if window == qtile.current_window:
         try:
             qtile.current_layout.cmd_swap_main()
         except AttributeError:
             return
     else:
-        qtile.current_screen.set_group(group)
-        qtile.current_group.focus(focus_window)
+        qtile.current_group.focus(window)
 
 
 @lazy.function
