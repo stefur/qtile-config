@@ -64,4 +64,4 @@ class CustomBattery(base.ThreadPoolText):
         else:
             logger.error("Cannot determine battery status.")
 
-        return f"{battery_icon} <span foreground='{colors['text']}'>{battery.percent}%</span>"
+        return f"{battery_icon} <span foreground='{colors['text']}'>{round(battery.percent)}%</span>"
