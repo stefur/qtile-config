@@ -8,6 +8,7 @@ import subprocess
 from datetime import datetime
 from typing import TYPE_CHECKING
 import iwlib  # type: ignore
+import psutil  # type: ignore
 
 from libqtile.config import (
     Key,
@@ -197,13 +198,13 @@ def warp_cursor() -> None:
 def spawn_or_focus(qtile: Qtile, app: str) -> None:
     """Check if the app being launched is already running, if so focus it"""
     window = None
-    for w in qtile.windows_map.values():
-        if isinstance(w, Window):
-            wm_class = w.get_wm_class()
+    for win in qtile.windows_map.values():
+        if isinstance(win, Window):
+            wm_class = win.get_wm_class()
             assert wm_class is not None
             if any(item.lower() in app for item in wm_class):
-                window = w
-                group = w.group
+                window = win
+                group = win.group
                 group.cmd_toscreen(toggle=False)
                 break
 
@@ -249,13 +250,15 @@ def notification(qtile: Qtile, request: str) -> None:
         message = now.strftime("%H:%M")
 
     elif request == "battery":
-        try:
-            title = "Battery status"
-            message = str(
-                subprocess.check_output(["acpi"], shell=True), encoding="utf-8"
-            )
-        except subprocess.CalledProcessError:
-            return
+
+        def convert_time(seconds: int) -> str:
+            minutes, seconds = divmod(seconds, 60)
+            hours, minutes = divmod(minutes, 60)
+            return f"{hours}:{minutes}"
+
+        battery = psutil.sensors_battery()
+        title = "Battery"
+        message = f"{round(battery.percent)}% power\nRemaining: {convert_time(battery.secsleft)}"
 
     send_notification(title, message, timeout=2500, urgent=False)
 
