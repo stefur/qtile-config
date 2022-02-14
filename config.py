@@ -64,6 +64,11 @@ MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org
 
 font_setting: Tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
 
+HAS_BATTERY = False
+
+if os.path.isdir("/sys/class/power_supply/BAT0"):
+    HAS_BATTERY = True
+
 group_assignments: Dict[str, Any[str, ...]] = {
     "1": ("firefox"),
     "2": (
@@ -250,18 +255,24 @@ def notification(qtile: Qtile, request: str) -> None:
         message = now.strftime("%H:%M")
 
     elif request == "battery":
-        battery = psutil.sensors_battery()
+        if HAS_BATTERY:
+            battery = psutil.sensors_battery()
 
-        def convert_time(seconds: int) -> str:
-            if not battery.power_plugged:
-                minutes, seconds = divmod(seconds, 60)
-                hours, minutes = divmod(minutes, 60)
-                return f"Remaining: {hours}:{minutes}"
-            else:
-                return ""
+            def convert_time(seconds: int) -> str:
+                if not battery.power_plugged:
+                    minutes, seconds = divmod(seconds, 60)
+                    hours, minutes = divmod(minutes, 60)
+                    time_remaining = f"Remaining: {hours}:{minutes}"
+                else:
+                    time_remaining = ""
+                return time_remaining
 
-        title = "Battery"
-        message = f"{round(battery.percent)}% power\n{convert_time(battery.secsleft)}"
+            title = "Battery"
+            message = (
+                f"{round(battery.percent)}% power\n{convert_time(battery.secsleft)}"
+            )
+        else:
+            return
 
     send_notification(title, message, timeout=2500, urgent=False)
 
@@ -563,8 +574,8 @@ widgets = [
     ),
 ]
 
-# Check if the computer is a laptop, and add some extra widgets if it is
-if os.path.isdir("/sys/class/power_supply/BAT0"):
+# Check if this is my laptop, and add some widgets if it is
+if HAS_BATTERY:
     widgets.insert(
         -3, widget.TextBox(padding=12, foreground=colors["primary"], text="墳")
     )
