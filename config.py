@@ -250,15 +250,18 @@ def notification(qtile: Qtile, request: str) -> None:
         message = now.strftime("%H:%M")
 
     elif request == "battery":
+        battery = psutil.sensors_battery()
 
         def convert_time(seconds: int) -> str:
-            minutes, seconds = divmod(seconds, 60)
-            hours, minutes = divmod(minutes, 60)
-            return f"{hours}:{minutes}"
+            if not battery.power_plugged:
+                minutes, seconds = divmod(seconds, 60)
+                hours, minutes = divmod(minutes, 60)
+                return f"Remaining: {hours}:{minutes}"
+            else:
+                return ""
 
-        battery = psutil.sensors_battery()
         title = "Battery"
-        message = f"{round(battery.percent)}% power\nRemaining: {convert_time(battery.secsleft)}"
+        message = f"{round(battery.percent)}% power\n{convert_time(battery.secsleft)}"
 
     send_notification(title, message, timeout=2500, urgent=False)
 
