@@ -227,6 +227,14 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
 
 
 @lazy.function
+def float_to_front(qtile: Qtile) -> None:
+    """Bring all floating windows of the group to front"""
+    for window in qtile.current_group.windows:
+        if window.floating:
+            window.cmd_bring_to_front()
+
+
+@lazy.function
 def notification(qtile: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
     if request == "wifi":
@@ -405,7 +413,7 @@ keys = [
     EzKey("M-S-f", lazy.window.toggle_floating()),
     EzKey("M-<space>", lazy.layout.flip()),
     EzKey("M-<Tab>", lazy.spawn(SWITCHER)),
-    EzKey("M-S-<Tab>", lazy.window.bring_to_front()),
+    EzKey("M-S-<Tab>", float_to_front()),
     EzKey("M-b", lazy.hide_show_bar()),
     # Layout toggles
     EzKey("M-m", toggle_layout(layout_names["max"])),
