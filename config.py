@@ -25,7 +25,7 @@ from libqtile.config import (
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
-from libqtile.backend.x11.window import Window
+from libqtile.backend.base import Window
 
 from battery import CustomBattery
 from spotify import NowPlaying
@@ -64,10 +64,7 @@ MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org
 
 font_setting: Tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
 
-HAS_BATTERY = False
-
-if os.path.isdir("/sys/class/power_supply/BAT0"):
-    HAS_BATTERY = True
+HAS_BATTERY = bool(os.path.isdir("/sys/class/power_supply/BAT0"))
 
 group_assignments: Dict[str, Any[str, ...]] = {
     "1": ("firefox"),
@@ -97,10 +94,13 @@ def autostart() -> None:
 @hook.subscribe.client_name_updated
 def follow_url(client: Window) -> None:
     """If Firefox is flagged as urgent, focus it"""
-    if BROWSER in client.window.get_wm_class() and client.urgent is True:
-        assert qtile is not None
-        qtile.current_screen.set_group(client.group)
-        client.group.focus(client)
+    wm_class: list | None = client.get_wm_class()
+    assert wm_class is not None
+    for item in wm_class:
+        if BROWSER in item and client.urgent is True:
+            assert qtile and client.group is not None
+            qtile.current_screen.set_group(client.group)
+            client.group.focus(client)
 
 
 @hook.subscribe.float_change
@@ -117,7 +117,8 @@ def center_window() -> None:
 def assign_app_group(client: Window) -> None:
     """Decides which apps go where when they are launched"""
     try:
-        wm_class = client.window.get_wm_class()
+        wm_class = client.get_wm_class()
+        assert wm_class is not None
         for group, apps in group_assignments.items():
             if any(item.startswith(apps) for item in wm_class):
                 client.togroup(group)
@@ -145,14 +146,15 @@ def toggle_fullscreen_off(client: Window) -> None:
 @hook.subscribe.client_name_updated
 def push_spotify(client: Window) -> None:
     """Push Spotify to correct group since it's wm_class setting is slow"""
-    if "spotify" in client.window.get_wm_class():
-        client.togroup("4")
+    if client.cmd_info().get("name") == "Spotify" and not client.get_wm_class():
+        client.cmd_togroup("4")
 
 
 @hook.subscribe.client_killed
 def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
     try:
+        assert client.group is not None
         win_count = len(client.group.windows)
     except AttributeError:
         win_count = 0
@@ -161,6 +163,7 @@ def fallback_default_layout(client: Window) -> None:
         return
 
     try:
+        assert client.group is not None
         screen = client.group.screen
     except AttributeError:
         return
@@ -178,16 +181,22 @@ def fallback_default_layout(client: Window) -> None:
 @hook.subscribe.client_killed
 def minimize_discord(client: Window) -> None:
     """Discord workaround to fix lingering residual window after its been closed to tray"""
-    if "discord" in client.window.get_wm_class():
-        client.toggle_minimize()
+    wm_class: list | None = client.get_wm_class()
+    assert wm_class is not None
+    for item in wm_class:
+        if "discord" in item:
+            client.cmd_toggle_minimize()
 
 
 @hook.subscribe.client_new
 def minimize_origin(client: Window) -> None:
     """Force Origin to minimize to prevent it from choking Qtile"""
     try:
-        if "Origin" in client.window.get_name():
-            client.toggle_minimize()
+        wm_class: list | None = client.get_wm_class()
+        assert wm_class is not None
+        for item in wm_class:
+            if "Origin" in item:
+                client.cmd_toggle_minimize()
     except TypeError:
         return
 
@@ -210,6 +219,7 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
             if any(item.lower() in app for item in wm_class):
                 window = win
                 group = win.group
+                assert group is not None
                 group.cmd_toscreen(toggle=False)
                 break
 
