@@ -64,7 +64,7 @@ MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org
 
 font_setting: Tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
 
-HAS_BATTERY = bool(os.path.isdir("/sys/class/power_supply/BAT0"))
+HAS_BATTERY: bool = os.path.isdir("/sys/class/power_supply/BAT0")
 
 group_assignments: Dict[str, Any[str, ...]] = {
     "1": ("firefox"),
