@@ -185,6 +185,7 @@ def minimize_discord(client: Window) -> None:
     assert wm_class is not None
     for item in wm_class:
         if "discord" in item:
+            client.cmd_toggle_floating()
             client.cmd_toggle_minimize()
 
 
