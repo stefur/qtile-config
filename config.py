@@ -30,6 +30,7 @@ from libqtile.backend.base import Window
 from battery import CustomBattery
 from spotify import NowPlaying
 from volume import VolumeCtrl
+from wifi import Wifi
 from colors import colors
 
 if TYPE_CHECKING:
@@ -608,20 +609,13 @@ if HAS_BATTERY:
     widgets.insert(
         -3,
         widget.Sep(
-            foreground=colors["background"], background=colors["background"], padding=8
+            foreground=colors["background"], background=colors["background"], padding=16
         ),
     )
     widgets.insert(
-        -3, widget.TextBox(padding=12, foreground=colors["primary"], text="直")
-    )
-    widgets.insert(
         -3,
-        widget.Wlan(
-            format="{essid}",
-            foreground=colors["text"],
-            interface=WIFI_INTERFACE,
-            disconnected_message="Disconnected",
-            update_interval=7,
+        Wifi(
+            foreground=colors["primary"],
             padding=0,
             mouse_callbacks={
                 "Button3": lazy.spawn(f"{TERMINAL} -e nmtui"),
