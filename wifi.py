@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from typing import Dict, Any
 
 
-PROPS_IFACE = "net.connman.Manager"
 CONNMAN_SERVICE = "net.connman"
 CONNMAN_INTERFACE = "net.connman.Manager"
 CONNMAN_PATH = "/"
@@ -43,10 +42,8 @@ class Wifi(base._TextBox):
             CONNMAN_SERVICE, CONNMAN_PATH, introspection
         )
 
-        props = proxy_object.get_interface(PROPS_IFACE)
-        props.on_property_changed(self.connman_change)
-
         self.connman = proxy_object.get_interface(CONNMAN_INTERFACE)
+        self.connman.on_property_changed(self.connman_change)
 
         self.configured = await self._update_wifi_info()
 
