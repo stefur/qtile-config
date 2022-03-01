@@ -13,7 +13,10 @@ from libqtile.widget import base
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Dict, Any
+    from typing import Dict, Any, Union, List
+    from dbus_next.signature import Variant
+    from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
+    from dbus_next.introspection import Node
 
 
 BATTERY = "/org/freedesktop/UPower/devices/battery_BAT0"
@@ -42,68 +45,72 @@ battery_level_icons: Dict[str, int] = {
 class CustomBattery(base._TextBox):
     """Displaying a battery icon and percentage"""
 
-    def __init__(self, **config):
+    def __init__(self, **config) -> None:
         base._TextBox.__init__(self, **config)
 
-        self.battery_status = None
-        self.battery_dev = None
-        self.upower = None
-        self.bus = None
+        self.battery_status: Dict[str, Any] | None
+        self.battery_device: ProxyInterface
+        self.upower: ProxyInterface
+        self.bus: MessageBus
         self.charging: bool = False
 
-    async def _config_async(self):
+    async def _config_async(self) -> None:
         await self._setup_dbus()
 
-    async def _setup_dbus(self):
+    async def _setup_dbus(self) -> None:
         # Set up connection to DBus
         self.bus = await MessageBus(bus_type=UPOWER_BUS).connect()
-        introspection = await self.bus.introspect(UPOWER_SERVICE, UPOWER_PATH)
+        introspection: Node = await self.bus.introspect(UPOWER_SERVICE, UPOWER_PATH)
         proxy_object = self.bus.get_proxy_object(
             UPOWER_SERVICE, UPOWER_PATH, introspection
         )
 
-        props = proxy_object.get_interface("org.freedesktop.DBus.Properties")
-        props.on_properties_changed(self.upower_change)
+        props = proxy_object.get_interface(PROPS_IFACE)
+        props.on_properties_changed(self.upower_change)  # type: ignore
 
         self.upower = proxy_object.get_interface(UPOWER_INTERFACE)
 
         # Get battery details from DBus
-        self.battery_status: Dict[str, Any] = await self.get_battery()
+        self.battery_status = await self.get_battery()
 
         # Is laptop charging?
-        self.charging: bool = not await self.upower.get_on_battery()
+        self.charging = not await self.upower.get_on_battery()  # type: ignore
 
         self.configured = await self._update_battery_info()
 
-    async def get_battery(self):
+    async def get_battery(self) -> None:
         """Get the device and fetch its info"""
 
         introspection = await self.bus.introspect(UPOWER_SERVICE, BATTERY)
         battery_obj = self.bus.get_proxy_object(UPOWER_SERVICE, BATTERY, introspection)
-        self.battery_dev = battery_obj.get_interface(UPOWER_DEVICE)
+        self.battery_device = battery_obj.get_interface(UPOWER_DEVICE)
         props = battery_obj.get_interface(PROPS_IFACE)
 
         # Listen for change signals on DBus
-        props.on_properties_changed(self.battery_change)
+        props.on_properties_changed(self.battery_change)  # type: ignore
 
         await self._update_battery_info()
 
-    def upower_change(self, interface, changed, invalidated):
+    def upower_change(
+        self, interface: str, changed: Dict[str, Variant], invalidated: List
+    ) -> None:
         """Update the charging status"""
         del interface, changed, invalidated
         asyncio.create_task(self._upower_change())
 
-    async def _upower_change(self):
-        self.charging = not await self.upower.get_on_battery()
+    async def _upower_change(self) -> None:
+        self.charging = not await self.upower.get_on_battery()  # type: ignore
         asyncio.create_task(self._update_battery_info())
 
-    def battery_change(self, interface, changed, invalidated):
+    def battery_change(
+        self, interface: str, changed: Dict[str, Variant], invalidated: List
+    ) -> None:
         """The batteries are polled every 2 mins by DBus"""
         del interface, changed, invalidated
         asyncio.create_task(self._update_battery_info())
 
-    async def _update_battery_info(self):
-        percentage = await self.battery_dev.get_percentage()
+    async def _update_battery_info(self) -> None:
+        percentage = await self.battery_device.get_percentage()  # type: ignore
         if self.charging and percentage == 100:
             battery_icon = ""
         elif self.charging:

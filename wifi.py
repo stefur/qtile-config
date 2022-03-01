@@ -48,14 +48,14 @@ class Wifi(base._TextBox):
         self.connman = proxy_object.get_interface(CONNMAN_INTERFACE)
         self.connman.on_property_changed(self.connman_change)  # type: ignore
 
-        self.configured = await self._update_wifi_info()
+        self.configured = await self.update_wifi_info()
 
-    def connman_change(self, interface, changed) -> None:
+    def connman_change(self, interface: str, changed: Dict[str, Variant]) -> None:
         """Listen to wifi changes"""
         del interface, changed
-        asyncio.create_task(self._update_wifi_info())
+        asyncio.create_task(self.update_wifi_info())
 
-    async def _update_wifi_info(self) -> None:
+    async def update_wifi_info(self) -> None:
         """Update the info in the widget"""
         wifi_info: List[List[Dict[str, Variant]]] = await self.connman.call_get_services()  # type: ignore
         if not wifi_info:
