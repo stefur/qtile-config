@@ -61,11 +61,11 @@ class CustomBattery(base._TextBox):
         # Set up connection to DBus
         self.bus = await MessageBus(bus_type=UPOWER_BUS).connect()
         introspection: Node = await self.bus.introspect(UPOWER_SERVICE, UPOWER_PATH)
-        proxy_object = self.bus.get_proxy_object(
+        proxy_object: ProxyObject = self.bus.get_proxy_object(
             UPOWER_SERVICE, UPOWER_PATH, introspection
         )
 
-        props = proxy_object.get_interface(PROPS_IFACE)
+        props: ProxyInterface = proxy_object.get_interface(PROPS_IFACE)
         props.on_properties_changed(self.upower_change)  # type: ignore
 
         self.upower = proxy_object.get_interface(UPOWER_INTERFACE)
@@ -92,7 +92,7 @@ class CustomBattery(base._TextBox):
         await self._update_battery_info()
 
     def upower_change(
-        self, interface: str, changed: Dict[str, Variant], invalidated: List
+        self, interface: str, changed: Dict[str, Variant], invalidated: List[Any]
     ) -> None:
         """Update the charging status"""
         del interface, changed, invalidated
@@ -103,7 +103,7 @@ class CustomBattery(base._TextBox):
         asyncio.create_task(self._update_battery_info())
 
     def battery_change(
-        self, interface: str, changed: Dict[str, Variant], invalidated: List
+        self, interface: str, changed: Dict[str, Variant], invalidated: List[Any]
     ) -> None:
         """The batteries are polled every 2 mins by DBus"""
         del interface, changed, invalidated

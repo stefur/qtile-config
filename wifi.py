@@ -14,7 +14,7 @@ from libqtile.widget import base
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Callable, Dict, List, Any, Union
+    from typing import Dict, List, Any, Union
     from dbus_next.signature import Variant
     from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
     from dbus_next.introspection import Node
@@ -38,7 +38,6 @@ class Wifi(base._TextBox):
         await self._setup_dbus()
 
     async def _setup_dbus(self) -> None:
-        # Set up connection to DBus
         self.bus = await MessageBus(bus_type=CONNMAN_BUS).connect()
         introspection: Node = await self.bus.introspect(CONNMAN_SERVICE, CONNMAN_PATH)
         proxy_object: ProxyObject = self.bus.get_proxy_object(
