@@ -142,6 +142,5 @@ class NowPlaying(base._TextBox):
         elif playbackstatus == "Playing":
             self.playback_icon = f"<span foreground='{colors['primary']}'> \
                                 契 </span>"
-        if self.text != self.now_playing:
-            self.qtile.call_soon(self.bar.draw)
-            self.text = f"{self.playback_icon} {self.now_playing}"
+        self.qtile.call_soon(self.bar.draw)
+        self.text = f"{self.playback_icon} {self.now_playing}"
