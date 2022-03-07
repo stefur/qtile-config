@@ -190,19 +190,6 @@ def minimize_discord(client: Window) -> None:
             client.cmd_toggle_minimize()
 
 
-@hook.subscribe.client_new
-def minimize_origin(client: Window) -> None:
-    """Force Origin to minimize to prevent it from choking Qtile"""
-    try:
-        wm_class: list | None = client.get_wm_class()
-        assert wm_class is not None
-        for item in wm_class:
-            if "Origin" in item:
-                client.cmd_toggle_minimize()
-    except TypeError:
-        return
-
-
 @hook.subscribe.current_screen_change
 def warp_cursor() -> None:
     """Warp cursor to focused screen"""
