@@ -234,6 +234,18 @@ def float_to_front(qtile: Qtile) -> None:
 
 
 @lazy.function
+def clear_urgent(qtile: Qtile) -> None:
+    """Clear the urgent flags for windows in a group"""
+    groupbox = qtile.widgets_map.get("groupbox")
+    assert groupbox is not None
+    group = groupbox.get_clicked_group()
+    for window in group.windows:
+        if window.urgent:
+            window.urgent = False
+    groupbox.draw()
+
+
+@lazy.function
 def notification(qtile: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
     if request == "wifi":
@@ -265,9 +277,7 @@ def notification(qtile: Qtile, request: str) -> None:
         if HAS_BATTERY:
             battery = psutil.sensors_battery()
             title = "Battery"
-            message = (
-                f"{round(battery.percent)}%"
-            )
+            message = f"{round(battery.percent)}%"
         else:
             return
 
@@ -539,6 +549,7 @@ widgets = [
         foreground=colors["text"],
         urgent_alert_method="text",
         urgent_text=colors["urgent"],
+        mouse_callbacks={"Button3": clear_urgent()},
     ),
     widget.CurrentLayout(padding=8, foreground=colors["primary"]),
     widget.WindowName(
