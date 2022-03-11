@@ -467,7 +467,7 @@ keys = [
 group_settings: List[Tuple[str, Dict[str, Any]]] = [
     ("1", {"label": "1", "layout": layout_names["monadtall"]}),
     ("2", {"label": "2", "layout": layout_names["monadtall"]}),
-    ("3", {"label": "3", "layout": layout_names["monadtall"]}),
+    ("3", {"label": "3", "layout": layout_names["treetab"]}),
     ("4", {"label": "4", "layout": layout_names["monadtall"]}),
     ("5", {"label": "5", "layout": layout_names["monadtall"]}),
     ("6", {"label": "6", "layout": layout_names["monadtall"]}),
