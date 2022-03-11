@@ -571,7 +571,7 @@ widgets = [
         }
     ),
     widget.Systray(padding=12, background=colors["background"]),
-    widget.Sep(padding=8, foreground=colors["background"]),
+    widget.Sep(padding=6, foreground=colors["background"]),
     Wifi(
         foreground=colors["primary"],
         mouse_callbacks={"Button1": notification("wifi")},
@@ -585,7 +585,7 @@ widgets = [
     widget.Clock(
         foreground=colors["text"],
         format="%H:%M",
-        padding=0,
+        padding=4,
         mouse_callbacks={
             "Button1": notification("date"),
             "Button3": lazy.spawn("python -m webbrowser https://kalender.se"),
