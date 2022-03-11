@@ -232,14 +232,23 @@ def float_to_front(qtile: Qtile) -> None:
 
 
 @lazy.function
-def clear_urgent(qtile: Qtile) -> None:
+def clear_urgent(qtile: Qtile, trigger: str) -> None:
     """Clear the urgent flags for windows in a group"""
     groupbox = qtile.widgets_map.get("groupbox")
     assert groupbox is not None
-    group = groupbox.get_clicked_group()
-    for window in group.windows:
-        if window.urgent:
-            window.urgent = False
+
+    if trigger == "click":
+        group = groupbox.get_clicked_group()
+        for window in group.windows:
+            if window.urgent:
+                window.urgent = False
+    elif trigger == "keybind":
+        groups = qtile.groups
+        for group in groups:
+            for window in group.windows:
+                if window.urgent:
+                    window.urgent = False
+
     groupbox.draw()
 
 
@@ -412,6 +421,7 @@ keys = [
     EzKey("M-<Tab>", lazy.spawn(SWITCHER)),
     EzKey("M-S-<Tab>", float_to_front()),
     EzKey("M-b", lazy.hide_show_bar()),
+    EzKey("M-u", clear_urgent("keybind")),
     # Layout toggles
     EzKey("M-m", toggle_layout(layout_names["max"])),
     EzKey("M-t", toggle_layout(layout_names["treetab"])),
@@ -547,7 +557,7 @@ widgets = [
         foreground=colors["text"],
         urgent_alert_method="text",
         urgent_text=colors["urgent"],
-        mouse_callbacks={"Button3": clear_urgent()},
+        mouse_callbacks={"Button3": clear_urgent("click")},
     ),
     widget.CurrentLayout(padding=8, foreground=colors["primary"]),
     widget.WindowName(
