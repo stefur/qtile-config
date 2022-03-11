@@ -88,8 +88,6 @@ def autostart() -> None:
     """Autostart things from script when qtile starts and hide the bar as default"""
     with subprocess.Popen("autostart.sh", shell=True) as process:
         hook.subscribe.shutdown(process.terminate)
-    assert qtile is not None
-    qtile.cmd_hide_show_bar()
 
 
 @hook.subscribe.client_name_updated
