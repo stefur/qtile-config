@@ -27,12 +27,18 @@ CONNMAN_BUS = BusType.SYSTEM
 
 
 class Wifi(base._TextBox):
-    """Displaying a battery icon and percentage"""
+    """Displaying a wifi icon and ssid"""
 
     def __init__(self, **config) -> None:
         base._TextBox.__init__(self, **config)
+        self.add_callbacks(
+            {
+                "Button3": self.cmd_toggle_ssid,
+            }
+        )
         self.bus: MessageBus
         self.connman: ProxyInterface
+        self.show_ssid: bool = False
 
     async def _config_async(self) -> None:
         await self._setup_dbus()
@@ -47,11 +53,20 @@ class Wifi(base._TextBox):
         self.connman = proxy_object.get_interface(CONNMAN_INTERFACE)
         self.connman.on_property_changed(self.connman_change)  # type: ignore
 
-        self.configured = await self.update_wifi_info()
+        await self.update_wifi_info()
 
     def connman_change(self, interface: str, changed: Dict[str, Variant]) -> None:
         """Listen to wifi changes"""
         del interface, changed
+        asyncio.create_task(self.update_wifi_info())
+
+    def cmd_toggle_ssid(self) -> None:
+        """Show or hide the ssid next to the icon"""
+        if self.show_ssid:
+            self.show_ssid = False
+        else:
+            self.show_ssid = True
+
         asyncio.create_task(self.update_wifi_info())
 
     async def update_wifi_info(self) -> None:
@@ -69,5 +84,11 @@ class Wifi(base._TextBox):
             wifi_icon = "睊"
             ssid = "Disconnected"
 
+        if self.show_ssid:
+            result = f"{wifi_icon}  <span foreground='{colors['text']}'>{ssid}</span>"
+
+        else:
+            result = f"{wifi_icon}"
+
         self.qtile.call_soon(self.bar.draw)
-        self.text = f"{wifi_icon}  <span foreground='{colors['text']}'>{ssid}</span>"
+        self.text = result

@@ -53,6 +53,7 @@ class CustomBattery(base._TextBox):
         self.upower: ProxyInterface
         self.bus: MessageBus
         self.charging: bool = False
+        self.show_percentage: bool = False
 
     async def _config_async(self) -> None:
         await self._setup_dbus()
@@ -76,7 +77,7 @@ class CustomBattery(base._TextBox):
         # Is laptop charging?
         self.charging = not await self.upower.get_on_battery()  # type: ignore
 
-        self.configured = await self._update_battery_info()
+        await self._update_battery_info()
 
     async def get_battery(self) -> None:
         """Get the device and fetch its info"""
@@ -109,6 +110,15 @@ class CustomBattery(base._TextBox):
         del interface, changed, invalidated
         asyncio.create_task(self._update_battery_info())
 
+    def cmd_toggle_percentage(self) -> None:
+        """Show or hide the percentage next to the icon"""
+        if self.show_percentage:
+            self.show_percentage = False
+        else:
+            self.show_percentage = True
+
+        asyncio.create_task(self._update_battery_info())
+
     async def _update_battery_info(self) -> None:
         percentage = await self.battery_device.get_percentage()  # type: ignore
         if self.charging and percentage == 100:
@@ -120,5 +130,11 @@ class CustomBattery(base._TextBox):
                 iter({k: v for k, v in battery_level_icons.items() if percentage >= v})
             )
 
+        if self.show_percentage:
+            result = f"{battery_icon} <span foreground='{colors['text']}'>{round(percentage)}%</span>"
+
+        else:
+            result = f"{battery_icon}"
+
         self.qtile.call_soon(self.bar.draw)
-        self.text = f"{battery_icon} <span foreground='{colors['text']}'>{round(percentage)}%</span>"
+        self.text = result

@@ -571,13 +571,19 @@ widgets = [
         }
     ),
     widget.Systray(padding=12, background=colors["background"]),
-    widget.Sep(
-        foreground=colors["background"], background=colors["background"], padding=8
+    widget.Sep(padding=8, foreground=colors["background"]),
+    Wifi(
+        foreground=colors["primary"],
+        mouse_callbacks={"Button1": notification("wifi")},
+        padding=12,
+    ),
+    VolumeCtrl(
+        padding=12,
+        foreground=colors["primary"],
     ),
     widget.TextBox(padding=12, foreground=colors["primary"], text=""),
     widget.Clock(
         foreground=colors["text"],
-        background=colors["background"],
         format="%H:%M",
         padding=0,
         mouse_callbacks={
@@ -585,59 +591,17 @@ widgets = [
             "Button3": lazy.spawn("python -m webbrowser https://kalender.se"),
         },
     ),
-    widget.Sep(
-        padding=10, foreground=colors["background"], background=colors["background"]
-    ),
+    widget.Sep(padding=10, foreground=colors["background"]),
 ]
 
 # Check if this is my laptop, and add some widgets if it is
 if HAS_BATTERY:
     widgets.insert(
-        -3, widget.TextBox(padding=12, foreground=colors["primary"], text="墳")
-    )
-    widgets.insert(
-        -3,
-        VolumeCtrl(
-            background=colors["background"],
-            padding=0,
-        ),
-    )
-    widgets.insert(
-        -3,
-        widget.Sep(
-            foreground=colors["background"], background=colors["background"], padding=16
-        ),
-    )
-    widgets.insert(
-        -3,
-        Wifi(
-            foreground=colors["primary"],
-            padding=0,
-            mouse_callbacks={
-                "Button3": lazy.spawn(f"{TERMINAL} -e nmtui"),
-                "Button1": notification("wifi"),
-            },
-        ),
-    )
-    widgets.insert(
-        -3,
-        widget.Sep(
-            foreground=colors["background"], background=colors["background"], padding=16
-        ),
-    )
-    widgets.insert(
         -3,
         CustomBattery(
-            padding=0,
+            padding=12,
             foreground=colors["primary"],
-            background=colors["background"],
             mouse_callbacks={"Button1": notification("battery")},
-        ),
-    )
-    widgets.insert(
-        -3,
-        widget.Sep(
-            foreground=colors["background"], background=colors["background"], padding=8
         ),
     )
 

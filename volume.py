@@ -7,8 +7,12 @@ import subprocess
 import re
 from libqtile.widget import base
 
+from colors import colors
+
 if TYPE_CHECKING:
     from typing import Dict
+
+volume_level_icons: Dict[str, int] = {"墳": 66, "奔": 33, "奄": 0}
 
 
 class VolumeCtrl(base._TextBox):
@@ -20,27 +24,35 @@ class VolumeCtrl(base._TextBox):
         self.add_callbacks(
             {
                 "Button1": self.cmd_mute,
+                "Button3": self.cmd_toggle_percentage,
                 "Button4": self.cmd_increase_vol,
                 "Button5": self.cmd_decrease_vol,
             }
         )
 
+        self.show_percentage: bool = False
         self.vol_value = re.compile(r"\[(\d?\d?\d?)%\]")
         self.text = self.get_vol()
 
     def get_vol(self) -> str:
         """Get the volume value"""
-        vol = subprocess.check_output(["amixer sget Master"], shell=True).decode(
+        output = subprocess.check_output(["amixer sget Master"], shell=True).decode(
             "utf-8"
         )
 
-        if re.search("off", vol):
-            vol = "Muted"
-        else:
-            vol = self.vol_value.search(vol).groups()[0]
-            vol = f"{vol}%"
+        vol = int(self.vol_value.search(output).groups()[0])
+        icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
 
-        return vol
+        if re.search("off", output):
+            vol = 0
+            icon = "ﱝ"
+
+        if self.show_percentage:
+            result = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
+        else:
+            result = f"{icon}"
+
+        return result
 
     def cmd_increase_vol(self) -> None:
         """Increase the volume and refresh volume and icon"""
@@ -60,5 +72,15 @@ class VolumeCtrl(base._TextBox):
         """Toggle to mute/unmute volume and refresh icon"""
 
         subprocess.call(["amixer -q sset Master toggle"], shell=True)
+        self.text = self.get_vol()
+        self.bar.draw()
+
+    def cmd_toggle_percentage(self) -> None:
+        """Show or hide the percentage next to the icon"""
+        if self.show_percentage:
+            self.show_percentage = False
+        else:
+            self.show_percentage = True
+
         self.text = self.get_vol()
         self.bar.draw()
