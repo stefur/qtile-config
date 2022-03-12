@@ -121,14 +121,14 @@ class CustomBattery(base._TextBox):
 
     async def _update_battery_info(self) -> None:
         percentage = await self.battery_device.get_percentage()  # type: ignore
+        battery_icon = next(
+            iter({k: v for k, v in battery_level_icons.items() if percentage >= v})
+        )
+
         if self.charging and percentage == 100:
-            battery_icon = ""
+            battery_icon = battery_icon + "ﮣ"
         elif self.charging:
-            battery_icon = ""
-        else:
-            battery_icon = next(
-                iter({k: v for k, v in battery_level_icons.items() if percentage >= v})
-            )
+            battery_icon = battery_icon + ""
 
         if self.show_percentage:
             result = f"{battery_icon} <span foreground='{colors['text']}'>{round(percentage)}%</span>"
