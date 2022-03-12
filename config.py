@@ -570,28 +570,26 @@ widgets = [
             "Button3": spawn_or_focus("spotify"),
         }
     ),
-    widget.Systray(padding=12, background=colors["background"]),
-    widget.Sep(padding=6, foreground=colors["background"]),
+    widget.Systray(padding=10, background=colors["background"]),
+    widget.Sep(padding=8, foreground=colors["background"]),
     Wifi(
         foreground=colors["primary"],
         mouse_callbacks={"Button1": notification("wifi")},
-        padding=12,
+        padding=10,
     ),
     VolumeCtrl(
-        padding=12,
+        padding=10,
         foreground=colors["primary"],
     ),
-    widget.TextBox(padding=12, foreground=colors["primary"], text=""),
     widget.Clock(
         foreground=colors["text"],
         format="%H:%M",
-        padding=4,
+        padding=10,
         mouse_callbacks={
             "Button1": notification("date"),
             "Button3": lazy.spawn("python -m webbrowser https://kalender.se"),
         },
     ),
-    widget.Sep(padding=10, foreground=colors["background"]),
 ]
 
 # Check if this is my laptop, and add some widgets if it is
@@ -599,7 +597,7 @@ if HAS_BATTERY:
     widgets.insert(
         -3,
         CustomBattery(
-            padding=12,
+            padding=10,
             foreground=colors["primary"],
             mouse_callbacks={
                 "Button1": notification("battery"),
