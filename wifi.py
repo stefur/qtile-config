@@ -9,7 +9,7 @@ from dbus_next.aio import MessageBus
 from dbus_next.constants import BusType
 
 
-from libqtile.widget import base
+from libqtile import widget
 
 from colors import colors
 
@@ -26,11 +26,11 @@ CONNMAN_PATH = "/"
 CONNMAN_BUS = BusType.SYSTEM
 
 
-class Wifi(base._TextBox):
+class Wifi(widget.TextBox):
     """Displaying a wifi icon and ssid"""
 
     def __init__(self, **config) -> None:
-        base._TextBox.__init__(self, **config)
+        widget.TextBox.__init__(self, **config)
         self.add_callbacks(
             {
                 "Button3": self.cmd_toggle_ssid,

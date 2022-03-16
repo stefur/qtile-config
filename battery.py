@@ -8,7 +8,7 @@ import asyncio
 from dbus_next.aio import MessageBus
 from dbus_next.constants import BusType
 
-from libqtile.widget import base
+from libqtile import widget
 
 from colors import colors
 
@@ -42,11 +42,11 @@ battery_level_icons: Dict[str, int] = {
 }
 
 
-class CustomBattery(base._TextBox):
+class CustomBattery(widget.TextBox):
     """Displaying a battery icon and percentage"""
 
     def __init__(self, **config) -> None:
-        base._TextBox.__init__(self, **config)
+        widget.TextBox.__init__(self, **config)
 
         self.battery_status: Dict[str, Any] | None
         self.battery_device: ProxyInterface
@@ -54,6 +54,7 @@ class CustomBattery(base._TextBox):
         self.bus: MessageBus
         self.charging: bool = False
         self.show_percentage: bool = False
+        self.text: str
 
     async def _config_async(self) -> None:
         await self._setup_dbus()

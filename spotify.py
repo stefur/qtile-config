@@ -9,7 +9,7 @@ from dbus_next import Message
 from dbus_next.aio import MessageBus
 from dbus_next.constants import BusType, MessageType
 
-from libqtile.widget import base
+from libqtile import widget
 from libqtile.utils import logger
 
 from colors import colors
@@ -28,11 +28,11 @@ DBUS_INTERFACE = "org.freedesktop.DBus"
 SESSION_BUS = BusType.SESSION
 
 
-class NowPlaying(base._TextBox):
+class NowPlaying(widget.TextBox):
     """Basically set up a listener for Spotify according to my liking"""
 
     def __init__(self, **config) -> None:
-        base._TextBox.__init__(self, **config)
+        widget.TextBox.__init__(self, **config)
 
         self.bus: MessageBus
         self.messagebody: List[Any] = []
@@ -40,6 +40,7 @@ class NowPlaying(base._TextBox):
         self.playback_icon: Optional[str] = None
         self.properties_changed: Optional[Message] = None
         self.name_owner_changed: Optional[Message] = None
+        self.text: str
 
     async def _config_async(self) -> None:
         await self._setup_dbus()

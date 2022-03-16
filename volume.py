@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import subprocess
 import re
-from libqtile.widget import base
+from libqtile import widget
 
 from colors import colors
 
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 volume_level_icons: Dict[str, int] = {"墳": 66, "奔": 33, "奄": 0}
 
 
-class VolumeCtrl(base._TextBox):
+class VolumeCtrl(widget.TextBox):
     """Use amixer to get the volume, transform it to a readable format and return an icon"""
 
     def __init__(self, **config):
-        base._TextBox.__init__(self, **config)
+        widget.TextBox.__init__(self, **config)
 
         self.add_callbacks(
             {
