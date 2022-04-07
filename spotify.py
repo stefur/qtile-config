@@ -84,15 +84,13 @@ class NowPlaying(widget.TextBox):
     def message_handler(self, updatemessage: Message) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
 
-        # Only listen to signal messages
-        if updatemessage.message_type != MessageType.SIGNAL:
-            return
-
-        # Attempt to skip repeated signals
+        # Attempt to skip repeated messages
         if updatemessage.body == self.messagebody:
             return
 
         if updatemessage.member == "PropertiesChanged":
+            if updatemessage.body[1].get("Metadata").value.get("xesam:title").value == "":
+                return
             self.spotify_changed(*updatemessage.body)
             self.messagebody = updatemessage.body
 
