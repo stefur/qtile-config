@@ -272,13 +272,8 @@ def notification(qtile: Qtile, request: str) -> None:
         todaysdate = today.strftime("%-d %B")
         weekday = today.strftime("%A")
         week = datetime.today().isocalendar()[1]
-        title = f"{todaysdate}, ({weekday})"
+        title = f"{todaysdate} ({weekday})"
         message = f"Week {week}"
-
-    elif request == "time":
-        now = datetime.now()
-        title = "The time is:"
-        message = now.strftime("%H:%M")
 
     elif request == "battery":
         if HAS_BATTERY:
@@ -429,7 +424,6 @@ keys = [
     EzKey("M-S-b", notification("battery")),
     EzKey("M-S-d", notification("date")),
     EzKey("M-S-w", notification("wifi")),
-    EzKey("M-S-t", notification("time")),
     # Some app shortcuts
     EzKey("M-w", spawn_or_focus(BROWSER)),
     EzKey("M-<Return>", lazy.spawn(TERMINAL)),
