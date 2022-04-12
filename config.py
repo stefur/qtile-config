@@ -111,6 +111,25 @@ def center_window() -> None:
     except AttributeError:
         return
 
+@hook.subscribe.layout_change
+def max_win_count(*args) -> None:
+    """Displays the window counter if the max layout is used"""        
+
+    if qtile is None:
+        raise TypeError("'None' value provided for Qtile")
+
+    try:
+        layout: str = qtile.current_group.layout.name
+        wincount_widget = qtile.widgets_map.get("windowcount")
+    except AttributeError:
+        return
+
+    if layout == layout_names["max"]:
+        wincount_widget.foreground = colors["primary"]
+        wincount_widget.padding = 0
+    else:
+        wincount_widget.foreground = colors["background"]
+        wincount_widget.padding = -12
 
 @hook.subscribe.client_new
 def assign_app_group(client: Window) -> None:
@@ -554,6 +573,7 @@ widgets = [
         mouse_callbacks={"Button3": clear_urgent("click")},
     ),
     widget.CurrentLayout(padding=8, foreground=colors["primary"]),
+    widget.WindowCount(padding=0, foreground=colors["primary"], text_format="[{num}]"),
     widget.WindowName(
         max_chars=50,
         empty_group_string="Desktop",
