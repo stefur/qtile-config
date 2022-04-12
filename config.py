@@ -119,7 +119,7 @@ def max_win_count(layout: str, group: str) -> None:
     try:
         wincount_widget = qtile.widgets_map.get("windowcount")
 
-        if layout == layout_names["max"]:
+        if layout.name == layout_names["max"]:
             wincount_widget.foreground = colors["primary"]
             wincount_widget.padding = 0
         else:
