@@ -24,8 +24,11 @@ from libqtile.config import (
 )
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
-from libqtile.utils import send_notification, logger
+from libqtile.utils import send_notification
+
 from libqtile.backend.base import Window
+from libqtile.layout.base import Layout, _SimpleLayoutBase
+from libqtile.group import _Group
 
 from battery import CustomBattery
 from spotify import NowPlaying
@@ -113,13 +116,15 @@ def center_window() -> None:
 
 
 @hook.subscribe.layout_change
-def max_win_count(layout: str, group: str) -> None:
+def max_win_count(new_layout: Layout | _SimpleLayoutBase, group: _Group) -> None:
     """Displays the window counter if the max layout is used"""
-    del group
+    del group  # Unused parameter
+
     try:
+        assert qtile is not None
         wincount_widget = qtile.widgets_map.get("windowcount")
 
-        if layout.name == layout_names["max"]:
+        if new_layout.name == layout_names["max"]:
             wincount_widget.foreground = colors["primary"]
             wincount_widget.padding = 0
         else:
@@ -347,7 +352,7 @@ layout_theme: Dict[str, int | str] = {
 
 layout_names: Dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
 
-layouts = [
+layouts: List[Any] = [
     layout.MonadTall(
         **layout_theme, single_border_width=0, name=layout_names["monadtall"]
     ),
