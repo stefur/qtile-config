@@ -24,7 +24,7 @@ from libqtile.config import (
 )
 from libqtile.lazy import lazy
 from libqtile import layout, bar, widget, hook, qtile
-from libqtile.utils import send_notification
+from libqtile.utils import send_notification, logger
 from libqtile.backend.base import Window
 
 from battery import CustomBattery
@@ -111,25 +111,23 @@ def center_window() -> None:
     except AttributeError:
         return
 
+
 @hook.subscribe.layout_change
-def max_win_count(*args) -> None:
-    """Displays the window counter if the max layout is used"""        
-
-    if qtile is None:
-        raise TypeError("'None' value provided for Qtile")
-
+def max_win_count(layout: str, group: str) -> None:
+    """Displays the window counter if the max layout is used"""
+    del group
     try:
-        layout: str = qtile.current_group.layout.name
         wincount_widget = qtile.widgets_map.get("windowcount")
+
+        if layout == layout_names["max"]:
+            wincount_widget.foreground = colors["primary"]
+            wincount_widget.padding = 0
+        else:
+            wincount_widget.foreground = colors["background"]
+            wincount_widget.padding = -12
     except AttributeError:
         return
 
-    if layout == layout_names["max"]:
-        wincount_widget.foreground = colors["primary"]
-        wincount_widget.padding = 0
-    else:
-        wincount_widget.foreground = colors["background"]
-        wincount_widget.padding = -12
 
 @hook.subscribe.client_new
 def assign_app_group(client: Window) -> None:
