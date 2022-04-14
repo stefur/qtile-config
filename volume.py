@@ -45,7 +45,7 @@ class VolumeCtrl(widget.TextBox):
 
         if re.search("off", output):
             vol = 0
-            icon = "ﱝ"
+            icon = "婢"
 
         if self.show_percentage:
             result = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
