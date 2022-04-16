@@ -27,7 +27,6 @@ from libqtile import layout, bar, widget, hook, qtile
 from libqtile.utils import send_notification
 
 from libqtile.backend.base import Window
-from libqtile.layout.base import Layout, _SimpleLayoutBase
 from libqtile.group import _Group
 
 from battery import CustomBattery
@@ -116,7 +115,9 @@ def center_window() -> None:
 
 
 @hook.subscribe.layout_change
-def max_win_count(new_layout: Layout | _SimpleLayoutBase, group: _Group) -> None:
+def max_win_count(
+    new_layout: layout.MonadTall | layout.Max | layout.TreeTab, group: _Group
+) -> None:
     """Displays the window counter if the max layout is used"""
     del group  # Unused parameter
 
@@ -352,7 +353,7 @@ layout_theme: Dict[str, int | str] = {
 
 layout_names: Dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
 
-layouts: List[Any] = [
+layouts = [
     layout.MonadTall(
         **layout_theme, single_border_width=0, name=layout_names["monadtall"]
     ),
@@ -461,8 +462,7 @@ keys = [
         [MOD],
         "k",
         [
-            EzKey("c", lazy.spawn("confedit.sh")),
-            EzKey("q", lazy.spawn(f"{TERMINAL} -e vim ~/.config/qtile/")),
+            EzKey("c", lazy.spawn(f"{TERMINAL} -e connmanctl")),
             EzKey("u", lazy.spawn(f"{TERMINAL} -e yay -Syu")),
             EzKey("b", lazy.spawn(f"{TERMINAL} -e bluetoothctl")),
         ],
@@ -576,7 +576,9 @@ widgets = [
         mouse_callbacks={"Button3": clear_urgent("click")},
     ),
     widget.CurrentLayout(padding=8, foreground=colors["primary"]),
-    widget.WindowCount(padding=0, foreground=colors["primary"], text_format="[{num}]"),
+    widget.WindowCount(
+        padding=-12, foreground=colors["background"], text_format="[{num}]"
+    ),
     widget.WindowName(
         max_chars=50,
         empty_group_string="Desktop",
