@@ -95,11 +95,14 @@ def autostart() -> None:
 @hook.subscribe.client_name_updated
 def follow_url(client: Window) -> None:
     """If Firefox is flagged as urgent, focus it"""
+    assert qtile is not None, "This should never be None"
+
     wm_class: list | None = client.get_wm_class()
-    assert wm_class is not None
+    if wm_class is None:
+        return
+
     for item in wm_class:
-        if BROWSER in item and client.urgent is True:
-            assert qtile and client.group is not None
+        if BROWSER in item and client.urgent is True and client.group is not None:
             qtile.current_screen.set_group(client.group)
             client.group.focus(client)
 
@@ -107,8 +110,9 @@ def follow_url(client: Window) -> None:
 @hook.subscribe.float_change
 def center_window() -> None:
     """Centers all the floating windows"""
+    assert qtile is not None, "This should never be None"
+
     try:
-        assert qtile is not None
         qtile.current_window.cmd_center()
     except AttributeError:
         return
@@ -119,10 +123,10 @@ def max_win_count(
     new_layout: layout.MonadTall | layout.Max | layout.TreeTab, group: _Group
 ) -> None:
     """Displays the window counter if the max layout is used"""
+    assert qtile is not None, "This should never be None"
     del group  # Unused parameter
 
     try:
-        assert qtile is not None
         wincount_widget = qtile.widgets_map.get("windowcount")
 
         if new_layout.name == layout_names["max"]:
@@ -138,9 +142,11 @@ def max_win_count(
 @hook.subscribe.client_new
 def assign_app_group(client: Window) -> None:
     """Decides which apps go where when they are launched"""
+    wm_class: list | None = client.get_wm_class()
+    if wm_class is None:
+        return
+
     try:
-        wm_class = client.get_wm_class()
-        assert wm_class is not None
         for group, apps in group_assignments.items():
             if any(item.startswith(apps) for item in wm_class):
                 client.togroup(group)
@@ -157,7 +163,7 @@ def toggle_fullscreen_off(client: Window) -> None:
         return
 
     if group is None:
-        assert qtile is not None
+        assert qtile is not None, "This should never be None"
         group = qtile.current_group
 
     for window in group.windows:
@@ -175,8 +181,12 @@ def push_spotify(client: Window) -> None:
 @hook.subscribe.client_killed
 def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
+    assert qtile is not None, "This should never be None"
+
+    if client.group is None:
+        return
+
     try:
-        assert client.group is not None
         win_count = len(client.group.windows)
     except AttributeError:
         win_count = 0
@@ -185,13 +195,11 @@ def fallback_default_layout(client: Window) -> None:
         return
 
     try:
-        assert client.group is not None
         screen = client.group.screen
     except AttributeError:
         return
 
     if screen is None:
-        assert qtile is not None
         screen = qtile.current_group.screen
 
     screen_rect = screen.get_rect()
@@ -204,7 +212,9 @@ def fallback_default_layout(client: Window) -> None:
 def minimize_discord(client: Window) -> None:
     """Discord workaround to fix lingering residual window after its been closed to tray"""
     wm_class: list | None = client.get_wm_class()
-    assert wm_class is not None
+    if wm_class is None:
+        return
+
     for item in wm_class:
         if "discord" in item:
             client.cmd_toggle_floating()
@@ -214,7 +224,7 @@ def minimize_discord(client: Window) -> None:
 @hook.subscribe.current_screen_change
 def warp_cursor() -> None:
     """Warp cursor to focused screen"""
-    assert qtile is not None
+    assert qtile is not None, "This should never be None"
     qtile.warp_to_screen()
 
 
@@ -224,12 +234,12 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
     window = None
     for win in qtile.windows_map.values():
         if isinstance(win, Window):
-            wm_class = win.get_wm_class()
-            assert wm_class is not None
+            wm_class: list | None = win.get_wm_class()
+            if wm_class is None or win.group is None:
+                return
             if any(item.lower() in app for item in wm_class):
                 window = win
                 group = win.group
-                assert group is not None
                 group.cmd_toscreen(toggle=False)
                 break
 
@@ -257,8 +267,9 @@ def float_to_front(qtile: Qtile) -> None:
 @lazy.function
 def clear_urgent(qtile: Qtile, trigger: str) -> None:
     """Clear the urgent flags for windows in a group"""
-    groupbox = qtile.widgets_map.get("groupbox")
-    assert groupbox is not None
+    groupbox: widget.groupbox.GroupBox | None = qtile.widgets_map.get("groupbox")
+    if groupbox is None:
+        return
 
     if trigger == "click":
         group = groupbox.get_clicked_group()
