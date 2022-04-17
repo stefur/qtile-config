@@ -194,19 +194,10 @@ def fallback_default_layout(client: Window) -> None:
     if win_count > 2:
         return
 
-    try:
-        screen = client.group.screen
-    except AttributeError:
-        return
+    group_name: str = client.group.name
+    default_layout_index: int = 0
 
-    if screen is None:
-        screen = qtile.current_group.screen
-
-    screen_rect = screen.get_rect()
-    client.group.layout.hide()
-    client.group.cmd_setlayout(layout_names["monadtall"])
-    client.group.layout.show(screen_rect)
-
+    qtile.cmd_to_layout_index(default_layout_index, group_name)
 
 @hook.subscribe.client_killed
 def minimize_discord(client: Window) -> None:
@@ -636,11 +627,8 @@ if HAS_BATTERY:
         ),
     )
 
-# Bar
-bar = bar.Bar(widgets=widgets, size=26)
-
-# Screens
-screens = [Screen(top=bar)]
+# Screen and bar
+screens = [Screen(top=bar.Bar(widgets=widgets, size=26))]
 
 # Misc
 dgroups_key_binder = None
