@@ -127,7 +127,7 @@ class CustomBattery(widget.TextBox):
         )
 
         if self.charging and percentage == 100:
-            battery_icon = battery_icon + "ﮣ"
+            battery_icon = battery_icon + ""
         elif self.charging:
             battery_icon = battery_icon + ""
 
