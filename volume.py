@@ -9,6 +9,7 @@ from colors import colors
 
 volume_level_icons: dict[str, int] = {"墳": 66, "奔": 33, "奄": 0}
 
+
 class VolumeCtrl(widget.TextBox):
     """Use amixer to get the volume, transform it to a readable format and return an icon"""
 
@@ -18,7 +19,7 @@ class VolumeCtrl(widget.TextBox):
         self.add_callbacks(
             {
                 "Button1": self.cmd_mute,
-                "Button3": self.cmd_toggle_percentage,
+                "Button3": self.cmd_toggle_text,
                 "Button4": self.cmd_increase_vol,
                 "Button5": self.cmd_decrease_vol,
             }
@@ -34,7 +35,7 @@ class VolumeCtrl(widget.TextBox):
             "utf-8"
         )
 
-        vol = int(self.vol_value.search(output).groups()[0]) # type: ignore
+        vol = int(self.vol_value.search(output).groups()[0])  # type: ignore
         icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
 
         if re.search("off", output):
@@ -69,7 +70,7 @@ class VolumeCtrl(widget.TextBox):
         self.text = self.get_vol()
         self.bar.draw()
 
-    def cmd_toggle_percentage(self) -> None:
+    def cmd_toggle_text(self) -> None:
         """Show or hide the percentage next to the icon"""
         if self.show_text:
             self.show_text = False

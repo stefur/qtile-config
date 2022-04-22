@@ -87,7 +87,10 @@ class NowPlaying(widget.TextBox):
             return
 
         if updatemessage.member == "PropertiesChanged":
-            if updatemessage.body[1].get("Metadata").value.get("xesam:title").value == "":
+            if (
+                updatemessage.body[1].get("Metadata").value.get("xesam:title").value
+                == ""
+            ):
                 return
             self.spotify_changed(*updatemessage.body)
             self.messagebody = updatemessage.body
@@ -103,7 +106,7 @@ class NowPlaying(widget.TextBox):
         self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
-        del interface, invalidated # Unused parameter
+        del interface, invalidated  # Unused parameter
         metadata = changed.get("Metadata")
         metadata = metadata.value  # type: ignore
         playbackstatus = changed.get("PlaybackStatus")
@@ -112,7 +115,7 @@ class NowPlaying(widget.TextBox):
 
     def spotify_nameowner(self, name: str, old_owner: str, new_owner: str) -> None:
         """If the nameowner for Spotify changed we assume it has closed and clear the text in the widget"""
-        del name, old_owner, new_owner # Unused parameter
+        del name, old_owner, new_owner  # Unused parameter
         self.qtile.call_soon(self.bar.draw)
         self.text = ""
 

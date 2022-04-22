@@ -125,9 +125,7 @@ def center_window() -> None:
 
 
 @hook.subscribe.layout_change
-def max_win_count(
-    new_layout: MonadTall | Max | TreeTab, group: _Group
-) -> None:
+def max_win_count(new_layout: MonadTall | Max | TreeTab, group: _Group) -> None:
     """Displays the window counter if the max layout is used"""
     assert qtile is not None, "This should never be None"
     del group  # Unused parameter
@@ -205,6 +203,7 @@ def fallback_default_layout(client: Window) -> None:
 
     qtile.cmd_to_layout_index(default_layout_index, group_name)
 
+
 @hook.subscribe.client_killed
 def minimize_discord(client: Window) -> None:
     """Discord workaround to fix lingering residual window after its been closed to tray"""
@@ -246,7 +245,9 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
 
     if window == qtile.current_window:
         try:
-            assert qtile.current_layout.cmd_swap_main is not None, "The current layout should have cmd_swap_main"
+            assert (
+                qtile.current_layout.cmd_swap_main is not None
+            ), "The current layout should have cmd_swap_main"
             qtile.current_layout.cmd_swap_main()
         except AttributeError:
             return
@@ -348,7 +349,9 @@ def toggle_microphone(qtile: Qtile) -> None:
 @lazy.function
 def toggle_layout(qtile: Qtile, layout_name: str) -> None:
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
-    assert qtile.current_group.screen is not None, "The screen should not be none for the current group"
+    assert (
+        qtile.current_group.screen is not None
+    ), "The screen should not be none for the current group"
     screen_rect = qtile.current_group.screen.get_rect()
     qtile.current_group.layout.hide()
     if qtile.current_group.layout.name == layout_name:
@@ -356,6 +359,14 @@ def toggle_layout(qtile: Qtile, layout_name: str) -> None:
     else:
         qtile.current_group.cmd_setlayout(layout_name)
     qtile.current_group.layout.show(screen_rect)
+
+
+@lazy.function
+def toggle_widget_info(qtile: Qtile) -> None:
+    """Toggle all widgets text info"""
+    for widget in qtile.widgets_map:
+        if hasattr(qtile.widgets_map[widget], "show_text"):
+            qtile.widgets_map[widget].cmd_toggle_text()  # type: ignore
 
 
 # Layouts
@@ -368,9 +379,7 @@ layout_theme: dict[str, int | str] = {
 layout_names: dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
 
 layouts = [
-    MonadTall(
-        **layout_theme, single_border_width=0, name=layout_names["monadtall"]
-    ),
+    MonadTall(**layout_theme, single_border_width=0, name=layout_names["monadtall"]),
     Max(name=layout_names["max"]),
     TreeTab(
         name=layout_names["treetab"],
@@ -454,6 +463,7 @@ keys = [
     EzKey("M-S-<Tab>", float_to_front()),
     EzKey("M-b", lazy.hide_show_bar()),
     EzKey("M-u", clear_urgent("keybind")),
+    EzKey("M-i", toggle_widget_info()),
     # Layout toggles
     EzKey("M-m", toggle_layout(layout_names["max"])),
     EzKey("M-t", toggle_layout(layout_names["treetab"])),
