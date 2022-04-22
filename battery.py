@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import asyncio
 
-from dbus_next.aio import MessageBus
+from dbus_next.aio.message_bus import MessageBus
 from dbus_next.constants import BusType
 
 from libqtile import widget
@@ -13,7 +13,7 @@ from libqtile import widget
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Dict, Any, Union, List
+    from typing import Any
     from dbus_next.signature import Variant
     from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
     from dbus_next.introspection import Node
@@ -27,7 +27,7 @@ UPOWER_PATH = "/org/freedesktop/UPower"
 UPOWER_DEVICE = UPOWER_INTERFACE + ".Device"
 UPOWER_BUS = BusType.SYSTEM
 
-battery_level_icons: Dict[str, int] = {
+battery_level_icons: dict[str, int] = {
     "": 95,
     "": 90,
     "": 80,
@@ -48,12 +48,12 @@ class CustomBattery(widget.TextBox):
     def __init__(self, **config) -> None:
         widget.TextBox.__init__(self, **config)
 
-        self.battery_status: Dict[str, Any] | None
+        self.battery_status: dict[str, Any] | None
         self.battery_device: ProxyInterface
         self.upower: ProxyInterface
         self.bus: MessageBus
         self.charging: bool = False
-        self.show_percentage: bool = False
+        self.show_text: bool = False
         self.text: str
 
     async def _config_async(self) -> None:
@@ -94,7 +94,7 @@ class CustomBattery(widget.TextBox):
         await self._update_battery_info()
 
     def upower_change(
-        self, interface: str, changed: Dict[str, Variant], invalidated: List[Any]
+        self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """Update the charging status"""
         del interface, changed, invalidated
@@ -105,7 +105,7 @@ class CustomBattery(widget.TextBox):
         asyncio.create_task(self._update_battery_info())
 
     def battery_change(
-        self, interface: str, changed: Dict[str, Variant], invalidated: List[Any]
+        self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """The batteries are polled every 2 mins by DBus"""
         del interface, changed, invalidated
@@ -113,10 +113,10 @@ class CustomBattery(widget.TextBox):
 
     def cmd_toggle_percentage(self) -> None:
         """Show or hide the percentage next to the icon"""
-        if self.show_percentage:
-            self.show_percentage = False
+        if self.show_text:
+            self.show_text = False
         else:
-            self.show_percentage = True
+            self.show_text = True
 
         asyncio.create_task(self._update_battery_info())
 
@@ -131,7 +131,7 @@ class CustomBattery(widget.TextBox):
         elif self.charging:
             battery_icon = battery_icon + ""
 
-        if self.show_percentage:
+        if self.show_text:
             result = f"{battery_icon} <span foreground='{colors['text']}'>{round(percentage)}%</span>"
 
         else:
