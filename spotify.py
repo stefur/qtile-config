@@ -5,20 +5,18 @@ from typing import TYPE_CHECKING
 
 import asyncio
 
-from dbus_next import Message
-from dbus_next.aio import MessageBus
+from dbus_next.message import Message
+from dbus_next.aio.message_bus import MessageBus
 from dbus_next.constants import BusType, MessageType
 
 from libqtile import widget
-from libqtile.utils import logger
+from libqtile.log_utils import logger
 
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Dict, Any, Union, List, Optional
+    from typing import Any, Optional
     from dbus_next.signature import Variant
-    from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
-    from dbus_next.introspection import Node
 
 SPOTIFY_SERVICE = "org.mpris.MediaPlayer2.spotify"
 SPOTIFY_INTERFACE = "org.freedesktop.DBus.Properties"
@@ -35,7 +33,7 @@ class NowPlaying(widget.TextBox):
         widget.TextBox.__init__(self, **config)
 
         self.bus: MessageBus
-        self.messagebody: List[Any] = []
+        self.messagebody: list[Any] = []
         self.now_playing: Optional[str] = None
         self.playback_icon: Optional[str] = None
         self.properties_changed: Optional[Message] = None
@@ -102,10 +100,10 @@ class NowPlaying(widget.TextBox):
             self.messagebody = updatemessage.body
 
     def spotify_changed(
-        self, interface: str, changed: Dict[str, Variant], invalidated: List[Any]
+        self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
-        del interface, invalidated
+        del interface, invalidated # Unused parameter
         metadata = changed.get("Metadata")
         metadata = metadata.value  # type: ignore
         playbackstatus = changed.get("PlaybackStatus")
@@ -114,7 +112,7 @@ class NowPlaying(widget.TextBox):
 
     def spotify_nameowner(self, name: str, old_owner: str, new_owner: str) -> None:
         """If the nameowner for Spotify changed we assume it has closed and clear the text in the widget"""
-        del name, old_owner, new_owner
+        del name, old_owner, new_owner # Unused parameter
         self.qtile.call_soon(self.bar.draw)
         self.text = ""
 

@@ -23,8 +23,14 @@ from libqtile.config import (
     DropDown,
 )
 from libqtile.lazy import lazy
-from libqtile import layout, bar, widget, hook, qtile
+from libqtile import bar, widget, hook, qtile
 from libqtile.utils import send_notification
+from libqtile.log_utils import logger
+
+from libqtile.layout.max import Max
+from libqtile.layout.xmonad import MonadTall
+from libqtile.layout.tree import TreeTab
+from libqtile.layout.floating import Floating
 
 from libqtile.backend.base import Window
 from libqtile.group import _Group
@@ -36,20 +42,20 @@ from wifi import Wifi
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Set, Tuple, Union
+    from typing import Any
     from libqtile.core.manager import Qtile
 
 MOD = "mod4"
 
-modifier_keys: Dict[str, str] = {
+modifier_keys: dict[str, str] = {
     "M": "mod4",
     "A": "mod1",
     "C": "control",
     "S": "shift",
 }
 
-network_interfaces: List[str] = os.listdir("/sys/class/net")
-wifi_prefix: Tuple[str, ...] = ("wlp", "wlan")
+network_interfaces: list[str] = os.listdir("/sys/class/net")
+wifi_prefix: tuple[str, ...] = ("wlp", "wlan")
 
 for interface in network_interfaces:
     if interface.startswith(wifi_prefix):
@@ -65,11 +71,11 @@ SWITCHER = "rofi -show window -modi window -theme ~/.config/rofi/style_switcher"
 FILE_MANAGER = "pcmanfm"
 MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 
-font_setting: Tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
+font_setting: tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
 
 HAS_BATTERY: bool = os.path.isdir("/sys/class/power_supply/BAT0")
 
-group_assignments: Dict[str, Any[str, ...]] = {
+group_assignments: dict[str, Any[str, ...]] = {
     "1": ("firefox"),
     "2": (
         "valheim.x86_64",
@@ -120,7 +126,7 @@ def center_window() -> None:
 
 @hook.subscribe.layout_change
 def max_win_count(
-    new_layout: layout.MonadTall | layout.Max | layout.TreeTab, group: _Group
+    new_layout: MonadTall | Max | TreeTab, group: _Group
 ) -> None:
     """Displays the window counter if the max layout is used"""
     assert qtile is not None, "This should never be None"
@@ -240,6 +246,7 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
 
     if window == qtile.current_window:
         try:
+            assert qtile.current_layout.cmd_swap_main is not None, "The current layout should have cmd_swap_main"
             qtile.current_layout.cmd_swap_main()
         except AttributeError:
             return
@@ -263,6 +270,7 @@ def clear_urgent(qtile: Qtile, trigger: str) -> None:
         return
 
     if trigger == "click":
+        assert groupbox.get_clicked_group is not None
         group = groupbox.get_clicked_group()
         for window in group.windows:
             if window.urgent:
@@ -280,35 +288,38 @@ def clear_urgent(qtile: Qtile, trigger: str) -> None:
 @lazy.function
 def notification(qtile: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
-    if request == "wifi":
-        try:
-            iface = iwlib.get_iwconfig(WIFI_INTERFACE)
-            quality = iface["stats"]["quality"]
-            quality = round((quality / 70) * 100)
-            ssid = str(iface["ESSID"], encoding="utf-8")
-            title = "Wifi"
-            message = f"{ssid}\nSignal strength: {quality}%"
-        except KeyError:
-            title = "Disconnected"
-            message = ""
+    try:
+        if request == "wifi":
+            try:
+                iface = iwlib.get_iwconfig(WIFI_INTERFACE)
+                quality = iface["stats"]["quality"]
+                quality = round((quality / 70) * 100)
+                ssid = str(iface["ESSID"], encoding="utf-8")
+                title = "Wifi"
+                message = f"{ssid}\nSignal strength: {quality}%"
+            except KeyError:
+                title = "Disconnected"
+                message = ""
 
-    elif request == "date":
-        today = datetime.today()
-        todaysdate = today.strftime("%-d %B")
-        weekday = today.strftime("%A")
-        week = datetime.today().isocalendar()[1]
-        title = f"{todaysdate} ({weekday})"
-        message = f"Week {week}"
+        elif request == "date":
+            today = datetime.today()
+            todaysdate = today.strftime("%-d %B")
+            weekday = today.strftime("%A")
+            week = datetime.today().isocalendar()[1]
+            title = f"{todaysdate} ({weekday})"
+            message = f"Week {week}"
 
-    elif request == "battery":
-        if HAS_BATTERY:
-            battery = psutil.sensors_battery()
-            title = "Battery"
-            message = f"{round(battery.percent)}%"
-        else:
-            return
-
-    send_notification(title, message, timeout=2500, urgent=False)
+        elif request == "battery":
+            if HAS_BATTERY:
+                battery = psutil.sensors_battery()
+                assert battery is not None, "Battery must be found by psutil"
+                title = "Battery"
+                message = f"{round(battery.percent)}%"
+            else:
+                return
+            send_notification(title, message, timeout=2500, urgent=False)
+    except Exception as err:
+        logger.warning(f"Failed to send notification: {err}")
 
 
 @lazy.function
@@ -330,13 +341,14 @@ def toggle_microphone(qtile: Qtile) -> None:
         title = "Microphone"
         send_notification(title, message, timeout=2500, urgent=False)
 
-    except subprocess.CalledProcessError:
-        return
+    except subprocess.CalledProcessError as err:
+        logger.warning(f"Failed to mute microphone: {err}")
 
 
 @lazy.function
 def toggle_layout(qtile: Qtile, layout_name: str) -> None:
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
+    assert qtile.current_group.screen is not None, "The screen should not be none for the current group"
     screen_rect = qtile.current_group.screen.get_rect()
     qtile.current_group.layout.hide()
     if qtile.current_group.layout.name == layout_name:
@@ -347,20 +359,20 @@ def toggle_layout(qtile: Qtile, layout_name: str) -> None:
 
 
 # Layouts
-layout_theme: Dict[str, int | str] = {
+layout_theme: dict[str, int | str] = {
     "border_width": 2,
     "border_focus": colors["primary"],
     "border_normal": colors["secondary"],
 }
 
-layout_names: Dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
+layout_names: dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
 
 layouts = [
-    layout.MonadTall(
+    MonadTall(
         **layout_theme, single_border_width=0, name=layout_names["monadtall"]
     ),
-    layout.Max(name=layout_names["max"]),
-    layout.TreeTab(
+    Max(name=layout_names["max"]),
+    TreeTab(
         name=layout_names["treetab"],
         font=font_setting[0],
         fontsize=font_setting[1],
@@ -381,9 +393,9 @@ layouts = [
     ),
 ]
 
-floating_layout = layout.Floating(
+floating_layout = Floating(
     float_rules=[
-        *layout.Floating.default_float_rules,
+        *Floating.default_float_rules,
         Match(wm_class="Nm-connection-editor"),
         Match(wm_class="pinentry-gtk-2"),
         Match(wm_class="Lxappearance"),
@@ -492,7 +504,7 @@ keys = [
 ]
 
 # Groups
-group_settings: List[Tuple[str, Dict[str, Any]]] = [
+group_settings: list[tuple[str, dict[str, Any]]] = [
     ("1", {"label": "1", "layout": layout_names["monadtall"]}),
     ("2", {"label": "2", "layout": layout_names["monadtall"]}),
     ("3", {"label": "3", "layout": layout_names["treetab"]}),
@@ -501,7 +513,7 @@ group_settings: List[Tuple[str, Dict[str, Any]]] = [
     ("6", {"label": "6", "layout": layout_names["monadtall"]}),
 ]
 
-groups: List[Any] = [Group(name, **kwargs) for name, kwargs in group_settings]
+groups: list[Any] = [Group(name, **kwargs) for name, kwargs in group_settings]
 
 for i in groups:
     keys.extend(
@@ -632,7 +644,7 @@ screens = [Screen(top=bar.Bar(widgets=widgets, size=26))]
 
 # Misc
 dgroups_key_binder = None
-dgroups_app_rules = []  # type: List
+dgroups_app_rules = []  # type: list
 follow_mouse_focus = True
 bring_front_click = True
 cursor_warp = False

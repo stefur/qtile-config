@@ -1,19 +1,13 @@
 """I don't want to poll alsa all the time but rather get the volume upon change"""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import subprocess
 import re
 from libqtile import widget
 
 from colors import colors
 
-if TYPE_CHECKING:
-    from typing import Dict
-
-volume_level_icons: Dict[str, int] = {"墳": 66, "奔": 33, "奄": 0}
-
+volume_level_icons: dict[str, int] = {"墳": 66, "奔": 33, "奄": 0}
 
 class VolumeCtrl(widget.TextBox):
     """Use amixer to get the volume, transform it to a readable format and return an icon"""
@@ -30,7 +24,7 @@ class VolumeCtrl(widget.TextBox):
             }
         )
 
-        self.show_percentage: bool = False
+        self.show_text: bool = False
         self.vol_value = re.compile(r"\[(\d?\d?\d?)%\]")
         self.text = self.get_vol()
 
@@ -40,14 +34,14 @@ class VolumeCtrl(widget.TextBox):
             "utf-8"
         )
 
-        vol = int(self.vol_value.search(output).groups()[0])
+        vol = int(self.vol_value.search(output).groups()[0]) # type: ignore
         icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
 
         if re.search("off", output):
             vol = 0
             icon = "婢"
 
-        if self.show_percentage:
+        if self.show_text:
             result = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
         else:
             result = f"{icon}"
@@ -77,10 +71,10 @@ class VolumeCtrl(widget.TextBox):
 
     def cmd_toggle_percentage(self) -> None:
         """Show or hide the percentage next to the icon"""
-        if self.show_percentage:
-            self.show_percentage = False
+        if self.show_text:
+            self.show_text = False
         else:
-            self.show_percentage = True
+            self.show_text = True
 
         self.text = self.get_vol()
         self.bar.draw()

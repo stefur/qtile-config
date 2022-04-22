@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import asyncio
 
-from dbus_next.aio import MessageBus
+from dbus_next.aio.message_bus import MessageBus
 from dbus_next.constants import BusType
 
 
@@ -14,7 +14,6 @@ from libqtile import widget
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Any, Union
     from dbus_next.signature import Variant
     from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
     from dbus_next.introspection import Node
@@ -38,7 +37,7 @@ class Wifi(widget.TextBox):
         )
         self.bus: MessageBus
         self.connman: ProxyInterface
-        self.show_ssid: bool = False
+        self.show_text: bool = False
 
     async def _config_async(self) -> None:
         await self._setup_dbus()
@@ -55,17 +54,17 @@ class Wifi(widget.TextBox):
 
         await self.update_wifi_info()
 
-    def connman_change(self, interface: str, changed: Dict[str, Variant]) -> None:
+    def connman_change(self, interface: str, changed: dict[str, Variant]) -> None:
         """Listen to wifi changes"""
-        del interface, changed
+        del interface, changed # Unused parameter
         asyncio.create_task(self.update_wifi_info())
 
     def cmd_toggle_ssid(self) -> None:
         """Show or hide the ssid next to the icon"""
-        if self.show_ssid:
-            self.show_ssid = False
+        if self.show_text:
+            self.show_text = False
         else:
-            self.show_ssid = True
+            self.show_text = True
 
         asyncio.create_task(self.update_wifi_info())
 
@@ -84,7 +83,7 @@ class Wifi(widget.TextBox):
             wifi_icon = "睊"
             ssid = "Disconnected"
 
-        if self.show_ssid:
+        if self.show_text:
             result = f"{wifi_icon}  <span foreground='{colors['text']}'>{ssid}</span>"
 
         else:
