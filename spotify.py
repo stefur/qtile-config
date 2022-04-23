@@ -135,6 +135,8 @@ class NowPlaying(widget.TextBox):
             if "(" in self.now_playing and ")" not in self.now_playing:
                 self.now_playing += ")"
 
+        self.now_playing = self.now_playing.replace("&", "&amp;")
+
         if playbackstatus == "Paused":
             self.playback_icon = f"<span foreground='{colors['primary']}'> \
                                 </span>"
