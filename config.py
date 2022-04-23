@@ -405,7 +405,7 @@ layouts = [
         section_fg=colors["background"],
         padding_left=10,
         padding_y=8,
-        margin_y=10,
+        margin_y=0,
     ),
 ]
 
