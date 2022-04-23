@@ -207,7 +207,7 @@ def fallback_default_layout(client: Window) -> None:
 @hook.subscribe.client_killed
 def minimize_discord(client: Window) -> None:
     """Discord workaround to fix lingering residual window after its been closed to tray"""
-    wm_class: list | None
+    wm_class: list | None = None
     if isinstance(client, Window):
         wm_class = client.get_wm_class()
 
