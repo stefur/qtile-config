@@ -42,7 +42,7 @@ from wifi import Wifi
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Optional
     from libqtile.core.manager import Qtile
 
 MOD = "mod4"
@@ -292,6 +292,8 @@ def clear_urgent(qtile: Qtile, trigger: str) -> None:
 @lazy.function
 def notification(qtile: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
+    title: str = ""
+    message: str = ""
     try:
         if request == "wifi":
             try:
@@ -321,7 +323,9 @@ def notification(qtile: Qtile, request: str) -> None:
                 message = f"{round(battery.percent)}%"
             else:
                 return
-            send_notification(title, message, timeout=2500, urgent=False)
+
+        send_notification(title, message, timeout=2500, urgent=False)
+
     except Exception as err:
         logger.warning(f"Failed to send notification: {err}")
 
