@@ -187,7 +187,7 @@ def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
     assert qtile is not None, "This should never be None"
 
-    if client.group is None:
+    if client.group is None or client.group.screen != qtile.current_screen:
         return
 
     try:
