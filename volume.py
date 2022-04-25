@@ -4,6 +4,7 @@ from __future__ import annotations
 import subprocess
 import re
 from libqtile import widget
+from libqtile.log_utils import logger
 
 from colors import colors
 
@@ -31,9 +32,14 @@ class VolumeCtrl(widget.TextBox):
 
     def get_vol(self) -> str:
         """Get the volume value"""
-        output = subprocess.check_output(["amixer sget Master"], shell=True).decode(
-            "utf-8"
-        )
+
+        try:
+            output = subprocess.check_output(["amixer sget Master"], shell=True).decode(
+                "utf-8"
+            )
+        except subprocess.CalledProcessError as err:
+            logger.warning(f"Failed to get amixer volume level on startup: {err}")
+            output = "0"
 
         vol = int(self.vol_value.search(output).groups()[0])  # type: ignore
         icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
