@@ -26,14 +26,13 @@ DBUS_INTERFACE = "org.freedesktop.DBus"
 SESSION_BUS = BusType.SESSION
 
 
-class NowPlaying(widget.TextBox):
+class Spotify(widget.TextBox):
     """Basically set up a listener for Spotify according to my liking"""
 
     def __init__(self, **config) -> None:
         widget.TextBox.__init__(self, **config)
 
         self.bus: MessageBus
-        self.messagebody: list[Any] = []
         self.now_playing: Optional[str] = None
         self.playback_icon: Optional[str] = None
         self.properties_changed: Optional[Message] = None
@@ -55,7 +54,7 @@ class NowPlaying(widget.TextBox):
                 member="AddMatch",
                 signature="s",
                 body=[
-                    f"type='signal',sender='{SPOTIFY_SERVICE}',member='PropertiesChanged',path='{SPOTIFY_PATH}',interface='{SPOTIFY_INTERFACE}'"
+                    f"type='signal',member='PropertiesChanged',path='{SPOTIFY_PATH}',interface='{SPOTIFY_INTERFACE}'"
                 ],
             )
         )
@@ -82,36 +81,31 @@ class NowPlaying(widget.TextBox):
     def message_handler(self, updatemessage: Message) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
 
-        # Attempt to skip repeated messages
-        if updatemessage.body == self.messagebody:
-            return
-
         if updatemessage.member == "PropertiesChanged":
-            if (
-                updatemessage.body[1].get("Metadata").value.get("xesam:title").value
-                == ""
-            ):
-                return
             self.spotify_changed(*updatemessage.body)
-            self.messagebody = updatemessage.body
 
         if (
             updatemessage.member == "NameOwnerChanged"
             and SPOTIFY_SERVICE in updatemessage.body[0]
         ):
             self.spotify_nameowner(*updatemessage.body)
-            self.messagebody = updatemessage.body
 
     def spotify_changed(
         self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
-        del interface, invalidated  # Unused parameter
-        metadata = changed.get("Metadata")
-        metadata = metadata.value  # type: ignore
-        playbackstatus = changed.get("PlaybackStatus")
-        playbackstatus = playbackstatus.value  # type: ignore
-        asyncio.create_task(self.update_widget(metadata, playbackstatus))
+        del interface, invalidated  # Unused parameters
+
+        try:
+            metadata = changed["Metadata"]
+        except Exception:
+            metadata = None
+        try:
+            playbackstatus = changed["PlaybackStatus"].value
+        except Exception:
+            playbackstatus = None
+
+        asyncio.create_task(self.update_widget(playbackstatus, metadata))
 
     def spotify_nameowner(self, name: str, old_owner: str, new_owner: str) -> None:
         """If the nameowner for Spotify changed we assume it has closed and clear the text in the widget"""
@@ -120,22 +114,25 @@ class NowPlaying(widget.TextBox):
         self.text = ""
 
     async def update_widget(
-        self, metadata: Optional[Variant], playbackstatus: Optional[Variant]
+        self, playbackstatus: Optional[Variant], metadata: Optional[Variant] | None
     ) -> None:
         """Update song artist and title, including playback status"""
 
-        artist = metadata["xesam:artist"].value[0]  # type: ignore
-        song = metadata["xesam:title"].value  # type: ignore
-        self.now_playing = f"{artist} - {song}"
-        self.now_playing.replace("\n", "")
+        if metadata is None:
+            pass
+        else:
+            artist = metadata.value["xesam:artist"].value[0]
+            song = metadata.value["xesam:title"].value
+            self.now_playing = f"{artist} - {song}"
+            self.now_playing.replace("\n", "")
 
-        if len(self.now_playing) > 35:
-            self.now_playing = self.now_playing[:35]
-            self.now_playing += "…"
-            if "(" in self.now_playing and ")" not in self.now_playing:
-                self.now_playing += ")"
+            if len(self.now_playing) > 35:
+                self.now_playing = self.now_playing[:35]
+                self.now_playing += "…"
+                if "(" in self.now_playing and ")" not in self.now_playing:
+                    self.now_playing += ")"
 
-        self.now_playing = self.now_playing.replace("&", "&amp;")
+            self.now_playing = self.now_playing.replace("&", "&amp;")
 
         if playbackstatus == "Paused":
             self.playback_icon = f"<span foreground='{colors['primary']}'> \

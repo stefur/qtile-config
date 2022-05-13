@@ -36,7 +36,7 @@ from libqtile.backend.base import Window
 from libqtile.group import _Group
 
 from battery import CustomBattery
-from spotify import NowPlaying
+from spotify import Spotify
 from volume import VolumeCtrl
 from wifi import Wifi
 from colors import colors
@@ -618,7 +618,7 @@ widgets = [
         max_chars=50,
         empty_group_string="Desktop",
     ),
-    NowPlaying(
+    Spotify(
         mouse_callbacks={
             "Button1": lazy.spawn(f"{MUSIC_CTRL}PlayPause"),
             "Button3": spawn_or_focus("spotify"),
