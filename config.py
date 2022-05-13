@@ -42,7 +42,7 @@ from wifi import Wifi
 from colors import colors
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
     from libqtile.core.manager import Qtile
 
 MOD = "mod4"
@@ -416,11 +416,9 @@ layouts = [
 floating_layout = Floating(
     float_rules=[
         *Floating.default_float_rules,
-        Match(wm_class="Nm-connection-editor"),
         Match(wm_class="pinentry-gtk-2"),
         Match(wm_class="Lxappearance"),
         Match(wm_class="Xfce4-taskmanager"),
-        Match(wm_class="VirtualBox Manager"),
         Match(wm_class="pavucontrol"),
         Match(
             title="Confirm File Replacing"
@@ -528,7 +526,7 @@ keys = [
 group_settings: list[tuple[str, dict[str, Any]]] = [
     ("1", {"label": "1", "layout": layout_names["monadtall"]}),
     ("2", {"label": "2", "layout": layout_names["monadtall"]}),
-    ("3", {"label": "3", "layout": layout_names["treetab"]}),
+    ("3", {"label": "3", "layout": layout_names["monadtall"]}),
     ("4", {"label": "4", "layout": layout_names["monadtall"]}),
     ("5", {"label": "5", "layout": layout_names["monadtall"]}),
     ("6", {"label": "6", "layout": layout_names["monadtall"]}),
