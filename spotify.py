@@ -96,25 +96,29 @@ class Spotify(widget.TextBox):
         """Send the properties if an update is received, e.g. new song or playback status"""
         del interface, invalidated  # Unused parameters
 
+        # TODO: Make message handling more elegant
         try:
             metadata = changed["Metadata"]
         except Exception:
             metadata = None
+
         try:
             playbackstatus = changed["PlaybackStatus"].value
         except Exception:
-            playbackstatus = None
+            playbackstatus = "Playing"  # Assume autoplay upon next song
 
         asyncio.create_task(self.update_widget(playbackstatus, metadata))
 
     def spotify_nameowner(self, name: str, old_owner: str, new_owner: str) -> None:
         """If the nameowner for Spotify changed we assume it has closed and clear the text in the widget"""
-        del name, old_owner, new_owner  # Unused parameter
+        del name, old_owner, new_owner  # Unused parameters
         self.qtile.call_soon(self.bar.draw)
         self.text = ""
 
     async def update_widget(
-        self, playbackstatus: Optional[Variant], metadata: Optional[Variant] | None
+        self,
+        playbackstatus: str | None,
+        metadata: Optional[Variant] | None,
     ) -> None:
         """Update song artist and title, including playback status"""
 
