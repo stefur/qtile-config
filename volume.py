@@ -8,7 +8,7 @@ from libqtile.log_utils import logger
 
 from colors import colors
 
-volume_level_icons: dict[str, int] = {"墳": 66, "奔": 33, "奄": 0}
+volume_level_icons: dict[str, int] = {"\ufa7d": 66, "\ufa7f": 33, "\ufa7e": 0}
 
 
 class VolumeCtrl(widget.TextBox):
@@ -28,53 +28,49 @@ class VolumeCtrl(widget.TextBox):
 
         self.show_text: bool = False
         self.vol_value = re.compile(r"\[(\d?\d?\d?)%\]")
-        self.text = self.get_vol()
+        self.get_vol()
 
-    def get_vol(self) -> str:
+    def get_vol(self) -> None:
         """Get the volume value"""
 
         try:
             output = subprocess.check_output(["amixer sget Master"], shell=True).decode(
                 "utf-8"
             )
-        except subprocess.CalledProcessError as err:
-            logger.warning(f"Failed to get amixer volume level on startup: {err}")
-            output = "0"
+            vol = int(self.vol_value.search(output).groups()[0])  # type: ignore
+            icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
 
-        vol = int(self.vol_value.search(output).groups()[0])  # type: ignore
-        icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
+            if re.search("off", output):
+                vol = 0
+                icon = "\ufa80"
 
-        if re.search("off", output):
-            vol = 0
-            icon = "婢"
+            if self.show_text:
+                self.text = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
+            else:
+                self.text = f"{icon}"
 
-        if self.show_text:
-            result = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
-        else:
-            result = f"{icon}"
+            self.bar.draw()
 
-        return result
+        except Exception as err:
+            logger.debug(f"Failed to get amixer volume level: {err}")
 
     def cmd_increase_vol(self) -> None:
         """Increase the volume and refresh volume and icon"""
 
         subprocess.call(["amixer -q sset Master 5%+"], shell=True)
-        self.text = self.get_vol()
-        self.bar.draw()
+        self.get_vol()
 
     def cmd_decrease_vol(self) -> None:
         """Decrease the volume and refresh volume and icon"""
 
         subprocess.call(["amixer -q sset Master 5%-"], shell=True)
-        self.text = self.get_vol()
-        self.bar.draw()
+        self.get_vol()
 
     def cmd_mute(self) -> None:
         """Toggle to mute/unmute volume and refresh icon"""
 
         subprocess.call(["amixer -q sset Master toggle"], shell=True)
-        self.text = self.get_vol()
-        self.bar.draw()
+        self.get_vol()
 
     def cmd_toggle_text(self) -> None:
         """Show or hide the percentage next to the icon"""
@@ -83,5 +79,4 @@ class VolumeCtrl(widget.TextBox):
         else:
             self.show_text = True
 
-        self.text = self.get_vol()
-        self.bar.draw()
+        self.get_vol()
