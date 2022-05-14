@@ -77,10 +77,10 @@ class Wifi(widget.TextBox):
             status = wifi_info[0][1]["State"].value
 
         if status == "online":
-            wifi_icon = "直"
+            wifi_icon = "\ufaa8"
             ssid = wifi_info[0][1]["Name"].value
         else:
-            wifi_icon = "睊"
+            wifi_icon = "\ufaa9"
             ssid = "Disconnected"
 
         if self.show_text:

@@ -28,17 +28,17 @@ UPOWER_DEVICE = UPOWER_INTERFACE + ".Device"
 UPOWER_BUS = BusType.SYSTEM
 
 battery_level_icons: dict[str, int] = {
-    "": 95,
-    "": 90,
-    "": 80,
-    "": 70,
-    "": 60,
-    "": 50,
-    "": 40,
-    "": 30,
-    "": 20,
-    "": 10,
-    "": 0,
+    "\uf578": 95,
+    "\uf581": 90,
+    "\uf580": 80,
+    "\uf57f": 70,
+    "\uf57e": 60,
+    "\uf57d": 50,
+    "\uf57c": 40,
+    "\uf57b": 30,
+    "\uf57a": 20,
+    "\uf579": 10,
+    "\uf58d": 0,
 }
 
 
@@ -127,9 +127,9 @@ class CustomBattery(widget.TextBox):
         )
 
         if self.charging and percentage == 100:
-            battery_icon = battery_icon + ""
+            battery_icon = battery_icon + "\uf492"
         elif self.charging:
-            battery_icon = battery_icon + ""
+            battery_icon = battery_icon + "\uf0e7"
 
         if self.show_text:
             result = f"{battery_icon} <span foreground='{colors['text']}'>{round(percentage)}%</span>"
