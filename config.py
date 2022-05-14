@@ -653,7 +653,7 @@ if HAS_BATTERY:
             foreground=colors["primary"],
             mouse_callbacks={
                 "Button1": notification("battery"),
-                "Button3": lazy.widget["custombattery"].toggle_percentage(),
+                "Button3": lazy.widget["custombattery"].toggle_text(),
             },
         ),
     )
