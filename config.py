@@ -503,6 +503,7 @@ keys = [
     # ScratchPads
     EzKey("M-S-<Return>", lazy.group["scratchpad"].dropdown_toggle("terminal")),
     EzKey("M-n", lazy.group["scratchpad"].dropdown_toggle("newsboat")),
+    EzKey("<Escape>", lazy.group["scratchpad"].hide_all()),
     # Spotify controls, lacking real media keys on 65% keyboard
     EzKey("M-8", lazy.spawn(f"{MUSIC_CTRL}PlayPause")),
     EzKey("M-9", lazy.spawn(f"{MUSIC_CTRL}Next")),
