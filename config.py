@@ -420,9 +420,9 @@ floating_layout = Floating(
         Match(wm_class="Lxappearance"),
         Match(wm_class="Xfce4-taskmanager"),
         Match(wm_class="pavucontrol"),
-        Match(
-            title="Confirm File Replacing"
-        ),  # This is to float the copy/replace dialog of Pcmanfm
+        Match(title="Execute File", wm_class="Pcmanfm"),
+        Match(title="Confirm File Replacing", wm_class="Pcmanfm"),
+        Match(title="Steam", wm_class=""),
     ],
     **layout_theme,
 )
