@@ -248,9 +248,8 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
 
     if window is None:
         qtile.cmd_spawn(app)
-        return
 
-    if window == qtile.current_window:
+    elif window == qtile.current_window:
         try:
             assert (
                 qtile.current_layout.cmd_swap_main is not None
@@ -378,6 +377,16 @@ def toggle_widget_info(qtile: Qtile) -> None:
     for widget in qtile.widgets_map:
         if hasattr(qtile.widgets_map[widget], "show_text"):
             qtile.widgets_map[widget].cmd_toggle_text()  # type: ignore
+
+
+@lazy.function
+def next_window(qtile: Qtile) -> None:
+    """If treetab or max layout, cycle next window"""
+    if (
+        qtile.current_layout.name == layout_names["max"]
+        or qtile.current_layout.name == layout_names["treetab"]
+    ):
+        qtile.current_group.layout.cmd_down()
 
 
 # Layouts
@@ -609,7 +618,13 @@ widgets = [
         urgent_text=colors["urgent"],
         mouse_callbacks={"Button3": clear_urgent("click")},
     ),
-    widget.CurrentLayout(padding=8, foreground=colors["primary"]),
+    widget.CurrentLayout(
+        padding=8,
+        foreground=colors["primary"],
+        mouse_callbacks={
+            "Button3": next_window(),
+        },
+    ),
     widget.WindowCount(
         padding=-12, foreground=colors["background"], text_format="[{num}]"
     ),
