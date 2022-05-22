@@ -389,6 +389,46 @@ def next_window(qtile: Qtile) -> None:
         qtile.current_group.layout.cmd_down()
 
 
+@lazy.function
+def focus_previous_group(qtile: Qtile) -> None:
+    """Go to the previous group"""
+    group: _Group = qtile.current_screen.group
+    group_index: int = qtile.groups.index(group)
+    previous_group: _Group = group.get_previous_group(skip_empty=False)
+    previous_group_index: int = qtile.groups.index(previous_group)
+    if previous_group_index < group_index:
+        qtile.current_screen.set_group(previous_group)
+
+
+@lazy.function
+def focus_next_group(qtile: Qtile) -> None:
+    """Go to the next group"""
+    group: _Group = qtile.current_screen.group
+    group_index: int = qtile.groups.index(group)
+    next_group: _Group = group.get_next_group(skip_empty=False)
+    next_group_index: int = qtile.groups.index(next_group)
+    if next_group_index > group_index:
+        qtile.current_screen.set_group(next_group)
+
+
+@lazy.function
+def window_to_previous_screen(qtile: Qtile) -> None:
+    """Send the window to the previous screen"""
+    i: int = qtile.screens.index(qtile.current_screen)
+    if i != 0 and qtile.current_window is not None:
+        group: str = qtile.screens[i - 1].group.name
+        qtile.current_window.togroup(group)
+
+
+@lazy.function
+def window_to_next_screen(qtile: Qtile) -> None:
+    """Send the window to the next screen"""
+    i: int = qtile.screens.index(qtile.current_screen)
+    if i + 1 != len(qtile.screens) and qtile.current_window is not None:
+        group: str = qtile.screens[i + 1].group.name
+        qtile.current_window.togroup(group)
+
+
 # Layouts
 layout_theme: dict[str, int | str] = {
     "border_width": 2,
@@ -460,16 +500,20 @@ keys = [
     ),
     # Grow/shrink windows
     EzKey(
-        "M-C-<Left>", lazy.layout.shrink_main().when(layout=layout_names["monadtall"])
+        "M-A-<Left>", lazy.layout.shrink_main().when(layout=layout_names["monadtall"])
     ),
     EzKey(
-        "M-C-<Right>", lazy.layout.grow_main().when(layout=layout_names["monadtall"])
+        "M-A-<Right>", lazy.layout.grow_main().when(layout=layout_names["monadtall"])
     ),
-    EzKey("M-C-<Down>", lazy.layout.shrink().when(layout=layout_names["monadtall"])),
-    EzKey("M-C-<Up>", lazy.layout.grow().when(layout=layout_names["monadtall"])),
-    # Move between screens
+    EzKey("M-A-<Down>", lazy.layout.shrink().when(layout=layout_names["monadtall"])),
+    EzKey("M-A-<Up>", lazy.layout.grow().when(layout=layout_names["monadtall"])),
+    # Move focus/windows between screens
     EzKey("M-<period>", lazy.next_screen()),
     EzKey("M-<comma>", lazy.prev_screen()),
+    EzKey("M-S-<period>", window_to_next_screen()),
+    EzKey("M-S-<comma>", window_to_previous_screen()),
+    EzKey("M-C-<Right>", focus_next_group()),
+    EzKey("M-C-<Left>", focus_previous_group()),
     # Various window controls
     EzKey("M-S-c", lazy.window.kill()),
     EzKey("M-C-c", lazy.window.center()),
@@ -626,11 +670,19 @@ widgets = [
         },
     ),
     widget.WindowCount(
-        padding=-12, foreground=colors["background"], text_format="[{num}]"
+        padding=-12,
+        foreground=colors["background"],
+        text_format="[{num}]",
+        mouse_callbacks={
+            "Button3": next_window(),
+        },
     ),
     widget.WindowName(
         max_chars=50,
         empty_group_string="Desktop",
+        mouse_callbacks={
+            "Button3": next_window(),
+        },
     ),
     Spotify(
         mouse_callbacks={
