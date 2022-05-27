@@ -91,24 +91,24 @@ class Spotify(widget.TextBox):
             asyncio.create_task(self.spotify_nameowner(*updatemessage.body))
 
         # Check if Spotify is running, otherwise do nothing.
-        if "spotify" not in (i.name() for i in psutil.process_iter()):
+        elif "spotify" not in (i.name() for i in psutil.process_iter()):
             return
 
         # Playback status will still be affected by other players sending a signal, such as Youtube.
-        if (
+        elif (
             updatemessage.member == "PropertiesChanged"
             and list(updatemessage.body[1].keys())[0] == "PlaybackStatus"
         ):
             asyncio.create_task(self.playback_changed(*updatemessage.body))
 
         # Check if the metadata trackid actually contains "spotify" to prevent other signals to update metadata (again, Youtube).
-        if (
+        elif (
             "spotify"
             not in updatemessage.body[1]["Metadata"].value["mpris:trackid"].value
         ):
             return
 
-        if (
+        elif (
             updatemessage.member == "PropertiesChanged"
             and list(updatemessage.body[1].keys())[0] == "Metadata"
         ):
