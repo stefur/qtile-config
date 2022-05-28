@@ -93,7 +93,7 @@ class Spotify(widget.TextBox):
             updatemessage.member == "PropertiesChanged"
             and list(updatemessage.body[1].keys())[0] == "PlaybackStatus"
         ):
-            asyncio.create_task(self.playback_changed(*updatemessage.body))
+            asyncio.create_task(self.playback_changed())
 
         elif (
             "spotify" in updatemessage.body[1]["Metadata"].value["mpris:trackid"].value
@@ -173,12 +173,8 @@ class Spotify(widget.TextBox):
 
         await self.update_bar()
 
-    async def playback_changed(
-        self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
-    ) -> None:
+    async def playback_changed(self) -> None:
         """Update the playback icon in the widget"""
-        del interface, changed, invalidated  # Discard the message entirely
-
         await self.get_playback_status()
 
         await self.get_metadata()
