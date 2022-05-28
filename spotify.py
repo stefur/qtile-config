@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import asyncio
-import psutil  # type: ignore
+from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
 
 from dbus_next.message import Message
 from dbus_next.aio.message_bus import MessageBus
@@ -18,6 +18,7 @@ from colors import colors
 if TYPE_CHECKING:
     from typing import Any, Optional
     from dbus_next.signature import Variant
+    from dbus_next.introspection import Node
 
 SPOTIFY_SERVICE = "org.mpris.MediaPlayer2.spotify"
 SPOTIFY_INTERFACE = "org.freedesktop.DBus.Properties"
@@ -82,46 +83,73 @@ class Spotify(widget.TextBox):
     def message_handler(self, updatemessage: Message) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
 
-        # TODO: Come up with a better solution to prevent other players from affecting the widget.
-
         if (
             updatemessage.member == "NameOwnerChanged"
             and SPOTIFY_SERVICE in updatemessage.body[0]
         ):
             asyncio.create_task(self.spotify_nameowner(*updatemessage.body))
 
-        # Check if Spotify is running, otherwise do nothing.
-        elif "spotify" not in (i.name() for i in psutil.process_iter()):
-            return
-
-        # Playback status will still be affected by other players sending a signal, such as Youtube.
         elif (
             updatemessage.member == "PropertiesChanged"
             and list(updatemessage.body[1].keys())[0] == "PlaybackStatus"
         ):
             asyncio.create_task(self.playback_changed(*updatemessage.body))
 
-        # Check if the metadata trackid actually contains "spotify" to prevent other signals to update metadata (again, Youtube).
         elif (
-            "spotify"
-            not in updatemessage.body[1]["Metadata"].value["mpris:trackid"].value
-        ):
-            return
-
-        elif (
-            updatemessage.member == "PropertiesChanged"
-            and list(updatemessage.body[1].keys())[0] == "Metadata"
+            "spotify" in updatemessage.body[1]["Metadata"].value["mpris:trackid"].value
         ):
             asyncio.create_task(self.metadata_changed(*updatemessage.body))
 
-    async def metadata_changed(
-        self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
-    ) -> None:
-        """Update the song info in the widget"""
-        del interface, invalidated  # Unused parameters
+    async def get_proxy_interface(self) -> ProxyInterface:
+        """Get the proxy interface"""
+        introspection: Node = await self.bus.introspect(SPOTIFY_SERVICE, SPOTIFY_PATH)
+        proxy_object: ProxyObject = self.bus.get_proxy_object(
+            SPOTIFY_SERVICE, SPOTIFY_PATH, introspection
+        )
 
-        artist = changed["Metadata"].value["xesam:artist"].value[0]
-        song = changed["Metadata"].value["xesam:title"].value
+        proxy_interface: ProxyInterface = proxy_object.get_interface(
+            "org.mpris.MediaPlayer2.Player"
+        )
+
+        return proxy_interface
+
+    async def get_playback_status(self) -> None:
+        """Get the playback status from Spotify"""
+
+        try:
+            proxy_interface: ProxyInterface = await self.get_proxy_interface()
+        except Exception:
+            return
+
+        playback_status: str = await proxy_interface.get_playback_status()  # type: ignore
+
+        if playback_status == "Paused":
+            self.playback_icon = f"<span foreground='{colors['primary']}'> \
+                                \uf8e3</span>"
+
+        elif playback_status == "Playing":
+            self.playback_icon = f"<span foreground='{colors['primary']}'> \
+                                \uf909</span>"
+
+    async def get_metadata(self) -> None:
+        """Get the metadata from Spotify"""
+        try:
+            proxy_interface: ProxyInterface = await self.get_proxy_interface()
+        except Exception:
+            return
+
+        metadata: dict[str, Variant] = await proxy_interface.get_metadata()  # type: ignore
+
+        await self.unpack_metadata(metadata)
+
+    async def unpack_metadata(self, metadata: dict[str, Variant]) -> None:
+        """Unpack the metadata to create the finished string"""
+        artist = metadata["xesam:artist"].value[0]
+        song = metadata["xesam:title"].value
+
+        if artist == "" and song == "":
+            return
+
         self.now_playing = f"{artist} - {song}"
         self.now_playing.replace("\n", "")
 
@@ -133,22 +161,35 @@ class Spotify(widget.TextBox):
 
         self.now_playing = self.now_playing.replace("&", "&amp;")
 
-        self.qtile.call_soon(self.bar.draw)
-        self.text = f"{self.playback_icon} {self.now_playing}"
+    async def metadata_changed(
+        self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
+    ) -> None:
+        """Update the song info in the widget"""
+        del interface, invalidated  # Unused parameters
+
+        await self.unpack_metadata(changed["Metadata"].value)
+
+        await self.get_playback_status()
+
+        await self.update_bar()
 
     async def playback_changed(
         self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """Update the playback icon in the widget"""
-        del interface, invalidated  # Unused parameters
+        del interface, changed, invalidated  # Discard the message entirely
 
-        if changed["PlaybackStatus"].value == "Paused":
-            self.playback_icon = f"<span foreground='{colors['primary']}'> \
-                                \uf8e3</span>"
+        await self.get_playback_status()
 
-        elif changed["PlaybackStatus"].value == "Playing":
-            self.playback_icon = f"<span foreground='{colors['primary']}'> \
-                                \uf909</span>"
+        await self.get_metadata()
+
+        await self.update_bar()
+
+    async def update_bar(self) -> None:
+        """Update the bar with new info"""
+        if self.now_playing is None or self.now_playing == "":
+            return
+
         self.qtile.call_soon(self.bar.draw)
         self.text = f"{self.playback_icon} {self.now_playing}"
 
