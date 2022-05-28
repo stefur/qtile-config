@@ -36,6 +36,7 @@ class Spotify(widget.TextBox):
 
         self.bus: MessageBus
         self.now_playing: Optional[str] = None
+        self.old_playback_icon: Optional[str] = None
         self.playback_icon: Optional[str] = None
         self.properties_changed: Optional[Message] = None
         self.name_owner_changed: Optional[Message] = None
@@ -178,6 +179,11 @@ class Spotify(widget.TextBox):
         await self.get_playback_status()
 
         await self.get_metadata()
+
+        if self.playback_icon == self.old_playback_icon:
+            return
+        else:
+            self.old_playback_icon = self.playback_icon
 
         await self.update_bar()
 
