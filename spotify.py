@@ -88,7 +88,7 @@ class Spotify(widget.TextBox):
             updatemessage.member == "NameOwnerChanged"
             and SPOTIFY_SERVICE in updatemessage.body[0]
         ):
-            asyncio.create_task(self.spotify_nameowner(*updatemessage.body))
+            asyncio.create_task(self.spotify_nameowner())
 
         elif (
             updatemessage.member == "PropertiesChanged"
@@ -195,10 +195,7 @@ class Spotify(widget.TextBox):
         self.qtile.call_soon(self.bar.draw)
         self.text = f"{self.playback_icon} {self.now_playing}"
 
-    async def spotify_nameowner(
-        self, name: str, old_owner: str, new_owner: str
-    ) -> None:
+    async def spotify_nameowner(self) -> None:
         """If the nameowner for Spotify changed we assume it has closed and clear the text in the widget"""
-        del name, old_owner, new_owner  # Unused parameters
         self.qtile.call_soon(self.bar.draw)
         self.text = ""
