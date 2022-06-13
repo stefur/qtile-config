@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import asyncio
-from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
 
 from dbus_next.message import Message
 from dbus_next.aio.message_bus import MessageBus
@@ -18,7 +17,6 @@ from colors import colors
 if TYPE_CHECKING:
     from typing import Any, Optional
     from dbus_next.signature import Variant
-    from dbus_next.introspection import Node
 
 SPOTIFY_SERVICE = "org.mpris.MediaPlayer2.spotify"
 SPOTIFY_INTERFACE = "org.freedesktop.DBus.Properties"
@@ -36,11 +34,11 @@ class Spotify(widget.TextBox):
 
         self.bus: MessageBus
         self.now_playing: Optional[str] = None
-        self.old_playback_icon: Optional[str] = None
         self.playback_icon: Optional[str] = None
         self.properties_changed: Optional[Message] = None
         self.name_owner_changed: Optional[Message] = None
         self.text: str
+        self.spotify_id: Optional[str] = None
 
     async def _config_async(self) -> None:
         await self._setup_dbus()
@@ -81,6 +79,8 @@ class Spotify(widget.TextBox):
 
         self.bus.add_message_handler(self.message_handler)
 
+        self.spotify_id = await self.get_spotify_id()
+
     def message_handler(self, updatemessage: Message) -> None:
         """Send the properties if an update is received, e.g. new song or playback status"""
 
@@ -88,60 +88,55 @@ class Spotify(widget.TextBox):
             updatemessage.member == "NameOwnerChanged"
             and SPOTIFY_SERVICE in updatemessage.body[0]
         ):
-            asyncio.create_task(self.spotify_nameowner())
+            asyncio.create_task(self.new_name_owner(*updatemessage.body))
 
         elif (
-            updatemessage.member == "PropertiesChanged"
-            and list(updatemessage.body[1].keys())[0] == "PlaybackStatus"
+            updatemessage.sender == self.spotify_id
+            and updatemessage.member == "PropertiesChanged"
         ):
-            asyncio.create_task(self.playback_changed())
+            asyncio.create_task(self.update_widget(*updatemessage.body))
 
-        elif (
-            "spotify" in updatemessage.body[1]["Metadata"].value["mpris:trackid"].value
-        ):
-            asyncio.create_task(self.metadata_changed(*updatemessage.body))
+    async def get_spotify_id(self) -> str:
+        """Get name owner ID of Spotify"""
 
-    async def get_proxy_interface(self) -> ProxyInterface:
-        """Get the proxy interface"""
-        introspection: Node = await self.bus.introspect(SPOTIFY_SERVICE, SPOTIFY_PATH)
-        proxy_object: ProxyObject = self.bus.get_proxy_object(
-            SPOTIFY_SERVICE, SPOTIFY_PATH, introspection
+        reply = await self.bus.call(
+            Message(
+                message_type=MessageType.METHOD_CALL,
+                destination="org.freedesktop.DBus",
+                path="/",
+                interface="org.freedesktop.DBus",
+                member="GetNameOwner",
+                signature="s",
+                body=["org.mpris.MediaPlayer2.spotify"],
+            )
         )
+        assert reply is not None, "This should not be None"
 
-        proxy_interface: ProxyInterface = proxy_object.get_interface(
-            "org.mpris.MediaPlayer2.Player"
+        if reply.message_type == MessageType.ERROR:
+            raise Exception(reply.body[0])
+
+        return reply.body[0]
+
+    async def get_property(self, prop: str) -> Message:
+        """Get a specific property"""
+
+        reply = await self.bus.call(
+            Message(
+                message_type=MessageType.METHOD_CALL,
+                destination="org.mpris.MediaPlayer2.spotify",
+                path="/org/mpris/MediaPlayer2",
+                interface="org.freedesktop.DBus.Properties",
+                member="Get",
+                signature="ss",
+                body=["org.mpris.MediaPlayer2.Player", prop],
+            )
         )
+        assert reply is not None, "This should not be None"
 
-        return proxy_interface
+        if reply.message_type == MessageType.ERROR:
+            raise Exception(reply.body[0])
 
-    async def get_playback_status(self) -> None:
-        """Get the playback status from Spotify"""
-
-        try:
-            proxy_interface: ProxyInterface = await self.get_proxy_interface()
-        except Exception:
-            return
-
-        playback_status: str = await proxy_interface.get_playback_status()  # type: ignore
-
-        if playback_status == "Paused":
-            self.playback_icon = f"<span foreground='{colors['primary']}'> \
-                                \uf8e3</span>"
-
-        elif playback_status == "Playing":
-            self.playback_icon = f"<span foreground='{colors['primary']}'> \
-                                \uf909</span>"
-
-    async def get_metadata(self) -> None:
-        """Get the metadata from Spotify"""
-        try:
-            proxy_interface: ProxyInterface = await self.get_proxy_interface()
-        except Exception:
-            return
-
-        metadata: dict[str, Variant] = await proxy_interface.get_metadata()  # type: ignore
-
-        await self.unpack_metadata(metadata)
+        return reply
 
     async def unpack_metadata(self, metadata: dict[str, Variant]) -> None:
         """Unpack the metadata to create the finished string"""
@@ -162,30 +157,40 @@ class Spotify(widget.TextBox):
 
         self.now_playing = self.now_playing.replace("&", "&amp;")
 
-    async def metadata_changed(
+    async def update_widget(
         self, interface: str, changed: dict[str, Variant], invalidated: list[Any]
     ) -> None:
         """Update the song info in the widget"""
         del interface, invalidated  # Unused parameters
 
-        await self.unpack_metadata(changed["Metadata"].value)
+        message_contains: str = list(changed.keys())[0]
 
-        await self.get_playback_status()
+        if message_contains == "PlaybackStatus":
+            await self.update_playback_icon(changed["PlaybackStatus"].value)
+
+            metadata = await self.get_property("Metadata")
+
+            await self.unpack_metadata(metadata.body[0].value)
+
+        elif message_contains == "Metadata":
+            await self.unpack_metadata(changed["Metadata"].value)
+
+            playback_status = await self.get_property("PlaybackStatus")
+
+            await self.update_playback_icon(playback_status.body[0].value)
 
         await self.update_bar()
 
-    async def playback_changed(self) -> None:
+    async def update_playback_icon(self, playback_status: str) -> None:
         """Update the playback icon in the widget"""
-        await self.get_playback_status()
 
-        await self.get_metadata()
+        if playback_status == "Paused":
+            self.playback_icon = f"<span foreground='{colors['primary']}'> \
+                                \uf8e3</span>"
 
-        if self.playback_icon == self.old_playback_icon:
-            return
-        else:
-            self.old_playback_icon = self.playback_icon
-
-        await self.update_bar()
+        elif playback_status == "Playing":
+            self.playback_icon = f"<span foreground='{colors['primary']}'> \
+                                \uf909</span>"
 
     async def update_bar(self) -> None:
         """Update the bar with new info"""
@@ -195,7 +200,13 @@ class Spotify(widget.TextBox):
         self.qtile.call_soon(self.bar.draw)
         self.text = f"{self.playback_icon} {self.now_playing}"
 
-    async def spotify_nameowner(self) -> None:
-        """If the nameowner for Spotify changed we assume it has closed and clear the text in the widget"""
-        self.qtile.call_soon(self.bar.draw)
-        self.text = ""
+    async def new_name_owner(self, name: str, old_owner: str, new_owner: str) -> None:
+        """Picking up whether Spotify was started or killed"""
+        del name  # Unused parameter
+
+        if new_owner != "":
+            self.spotify_id = await self.get_spotify_id()
+        elif old_owner != "":
+            self.spotify_id = None
+            self.qtile.call_soon(self.bar.draw)
+            self.text = ""
