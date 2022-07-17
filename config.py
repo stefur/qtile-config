@@ -602,7 +602,7 @@ scratchpad_conf: dict[str, Any] = {
     "warp_pointer": False,
     "height": 0.6,
     "y": 0.2,
-    "opacity": 1
+    "opacity": 1,
 }
 
 groups.append(
@@ -610,8 +610,12 @@ groups.append(
         "scratchpad",
         [
             DropDown("terminal", TERMINAL, **scratchpad_conf),
-            DropDown("newsboat", f"{TERMINAL} -e newsboat", **scratchpad_conf)
-        ]
+            DropDown(
+                "newsboat",
+                f"{TERMINAL} -e newsboat -C=~/.config/newsboat/config",
+                **scratchpad_conf,
+            ),
+        ],
     )
 )
 
