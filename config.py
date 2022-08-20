@@ -71,7 +71,7 @@ SWITCHER = "rofi -show window -modi window -theme ~/.config/rofi/style_switcher"
 FILE_MANAGER = "pcmanfm"
 MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 
-font_setting: tuple[str, int] = ("FiraCode Nerd Font Regular", 13)
+font_setting: tuple[str, int] = ("FiraMono Nerd Font Bold", 13)
 
 HAS_BATTERY: bool = os.path.isdir("/sys/class/power_supply/BAT0")
 
@@ -612,7 +612,7 @@ groups.append(
             DropDown("terminal", TERMINAL, **scratchpad_conf),
             DropDown(
                 "newsboat",
-                f"{TERMINAL} -e newsboat -C=~/.config/newsboat/config",
+                f"{TERMINAL} -e newsboat -C=~/.config/newsboat/config -u=~/Syncthing/Files/newsboat/urls -c=~/Syncthing/Files/newsboat/cache.db",
                 **scratchpad_conf,
             ),
         ],
