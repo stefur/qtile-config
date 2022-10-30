@@ -32,7 +32,7 @@ class Wifi(widget.TextBox):
         widget.TextBox.__init__(self, **config)
         self.add_callbacks(
             {
-                "Button3": self.cmd_toggle_text,
+                "Button3": self.toggle_text,
             }
         )
         self.bus: MessageBus
@@ -59,7 +59,7 @@ class Wifi(widget.TextBox):
         del interface, changed  # Unused parameter
         asyncio.create_task(self.update_wifi_info())
 
-    def cmd_toggle_text(self) -> None:
+    def toggle_text(self) -> None:
         """Show or hide the ssid next to the icon"""
         if self.show_text:
             self.show_text = False

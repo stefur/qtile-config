@@ -119,7 +119,7 @@ def center_window() -> None:
     assert qtile is not None, "This should never be None"
 
     try:
-        qtile.current_window.cmd_center()
+        qtile.current_window.center()
     except AttributeError:
         return
 
@@ -178,8 +178,8 @@ def toggle_fullscreen_off(client: Window) -> None:
 @hook.subscribe.client_name_updated
 def push_spotify(client: Window) -> None:
     """Push Spotify to correct group since it's wm_class setting is slow"""
-    if client.cmd_info().get("name") == "Spotify" and not client.get_wm_class():
-        client.cmd_togroup("4")
+    if client.info().get("name") == "Spotify" and not client.get_wm_class():
+        client.togroup("4")
 
 
 @hook.subscribe.client_killed
@@ -205,7 +205,7 @@ def fallback_default_layout(client: Window) -> None:
     group_name: str = client.group.name
     default_layout_index: int = 0
 
-    qtile.cmd_to_layout_index(default_layout_index, group_name)
+    qtile.to_layout_index(default_layout_index, group_name)
 
 
 @hook.subscribe.client_killed
@@ -220,8 +220,8 @@ def minimize_discord(client: Window) -> None:
 
     for item in wm_class:
         if "discord" in item:
-            client.cmd_toggle_floating()
-            client.cmd_toggle_minimize()
+            client.toggle_floating()
+            client.toggle_minimize()
 
 
 @hook.subscribe.current_screen_change
@@ -243,18 +243,18 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
             if any(item.lower() in app for item in wm_class):
                 window = win
                 group = win.group
-                group.cmd_toscreen(toggle=False)
+                group.toscreen(toggle=False)
                 break
 
     if window is None:
-        qtile.cmd_spawn(app)
+        qtile.spawn(app)
 
     elif window == qtile.current_window:
         try:
             assert (
-                qtile.current_layout.cmd_swap_main is not None
-            ), "The current layout should have cmd_swap_main"
-            qtile.current_layout.cmd_swap_main()
+                qtile.current_layout.swap_main is not None
+            ), "The current layout should have swap_main"
+            qtile.current_layout.swap_main()
         except AttributeError:
             return
     else:
@@ -266,7 +266,7 @@ def float_to_front(qtile: Qtile) -> None:
     """Bring all floating windows of the group to front"""
     for window in qtile.current_group.windows:
         if window.floating:
-            window.cmd_bring_to_front()
+            window.bring_to_front()
 
 
 @lazy.function
@@ -365,9 +365,9 @@ def toggle_layout(qtile: Qtile, layout_name: str) -> None:
     screen_rect = qtile.current_group.screen.get_rect()
     qtile.current_group.layout.hide()
     if qtile.current_group.layout.name == layout_name:
-        qtile.current_group.cmd_setlayout(layout_names["monadtall"])
+        qtile.current_group.setlayout(layout_names["monadtall"])
     else:
-        qtile.current_group.cmd_setlayout(layout_name)
+        qtile.current_group.setlayout(layout_name)
     qtile.current_group.layout.show(screen_rect)
 
 
@@ -376,7 +376,7 @@ def toggle_widget_info(qtile: Qtile) -> None:
     """Toggle all widgets text info"""
     for widget in qtile.widgets_map:
         if hasattr(qtile.widgets_map[widget], "show_text"):
-            qtile.widgets_map[widget].cmd_toggle_text()  # type: ignore
+            qtile.widgets_map[widget].toggle_text()  # type: ignore
 
 
 @lazy.function
@@ -386,7 +386,7 @@ def next_window(qtile: Qtile) -> None:
         qtile.current_layout.name == layout_names["max"]
         or qtile.current_layout.name == layout_names["treetab"]
     ):
-        qtile.current_group.layout.cmd_down()
+        qtile.current_group.layout.down()
 
 
 @lazy.function

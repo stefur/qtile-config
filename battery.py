@@ -111,7 +111,7 @@ class CustomBattery(widget.TextBox):
         del interface, changed, invalidated
         asyncio.create_task(self._update_battery_info())
 
-    def cmd_toggle_text(self) -> None:
+    def toggle_text(self) -> None:
         """Show or hide the percentage next to the icon"""
         if self.show_text:
             self.show_text = False

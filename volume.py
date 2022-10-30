@@ -19,10 +19,10 @@ class VolumeCtrl(widget.TextBox):
 
         self.add_callbacks(
             {
-                "Button1": self.cmd_mute,
-                "Button3": self.cmd_toggle_text,
-                "Button4": self.cmd_increase_vol,
-                "Button5": self.cmd_decrease_vol,
+                "Button1": self.mute,
+                "Button3": self.toggle_text,
+                "Button4": self.increase_vol,
+                "Button5": self.decrease_vol,
             }
         )
 
@@ -54,25 +54,25 @@ class VolumeCtrl(widget.TextBox):
         except Exception as err:
             logger.debug(f"Failed to get amixer volume level: {err}")
 
-    def cmd_increase_vol(self) -> None:
+    def increase_vol(self) -> None:
         """Increase the volume and refresh volume and icon"""
 
         subprocess.call(["amixer -q sset Master 5%+"], shell=True)
         self.get_vol()
 
-    def cmd_decrease_vol(self) -> None:
+    def decrease_vol(self) -> None:
         """Decrease the volume and refresh volume and icon"""
 
         subprocess.call(["amixer -q sset Master 5%-"], shell=True)
         self.get_vol()
 
-    def cmd_mute(self) -> None:
+    def mute(self) -> None:
         """Toggle to mute/unmute volume and refresh icon"""
 
         subprocess.call(["amixer -q sset Master toggle"], shell=True)
         self.get_vol()
 
-    def cmd_toggle_text(self) -> None:
+    def toggle_text(self) -> None:
         """Show or hide the percentage next to the icon"""
         if self.show_text:
             self.show_text = False
