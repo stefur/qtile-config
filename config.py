@@ -1,4 +1,4 @@
-"""Qtile config a la stefur"""
+"""qtile wayland config"""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from libqtile.config import (
 )
 from libqtile.lazy import lazy
 from libqtile import bar, widget, hook, qtile
+from libqtile.backend.wayland import InputConfig
 from libqtile.utils import send_notification
 from libqtile.log_utils import logger
 
@@ -62,14 +63,12 @@ for interface in network_interfaces:
         WIFI_INTERFACE = interface
         break
 
-TERMINAL = "alacritty"
+TERMINAL = "foot"
 BROWSER = "firefox"
-LAUNCHER = (
-    "rofi -no-lazy-grab -show drun -modi drun -theme ~/.config/rofi/style_launcher"
-)
-SWITCHER = "rofi -show window -modi window -theme ~/.config/rofi/style_switcher"
+LAUNCHER = "fuzzel.sh"
 FILE_MANAGER = "pcmanfm"
-MUSIC_CTRL = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
+MUSIC_CTRL = """dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify
+ /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."""
 
 font_setting: tuple[str, int] = ("FiraMono Nerd Font Bold", 13)
 
@@ -86,8 +85,17 @@ group_assignments: dict[str, Any[str, ...]] = {
         "steam_app",
     ),
     "3": ("discord", "signal"),
-    "4": ("spotify"),
+    "4": ("Spotify"),
     "5": ("Steam"),
+}
+
+# Inputs configuration
+wl_input_rules = {
+    "type:keyboard": InputConfig(
+        kb_repeat_rate=50,
+        kb_repeat_delay=300,
+    ),
+    "type:touchpad": InputConfig(drag=True, tap=True, natural_scroll=True),
 }
 
 
@@ -225,10 +233,10 @@ def warp_cursor() -> None:
 
 
 @lazy.function
-def spawn_or_focus(qtile: Qtile, app: str) -> None:
+def spawn_or_focus(self: Qtile, app: str) -> None:
     """Check if the app being launched is already running, if so focus it"""
     window = None
-    for win in qtile.windows_map.values():
+    for win in self.windows_map.values():
         if isinstance(win, Window):
             wm_class: list | None = win.get_wm_class()
             if wm_class is None or win.group is None:
@@ -240,32 +248,32 @@ def spawn_or_focus(qtile: Qtile, app: str) -> None:
                 break
 
     if window is None:
-        qtile.spawn(app)
+        self.spawn(app)
 
-    elif window == qtile.current_window:
+    elif window == self.current_window:
         try:
             assert (
-                qtile.current_layout.swap_main is not None
+                self.current_layout.swap_main is not None
             ), "The current layout should have swap_main"
-            qtile.current_layout.swap_main()
+            self.current_layout.swap_main()
         except AttributeError:
             return
     else:
-        qtile.current_group.focus(window)
+        self.current_group.focus(window)
 
 
 @lazy.function
-def float_to_front(qtile: Qtile) -> None:
+def float_to_front(self: Qtile) -> None:
     """Bring all floating windows of the group to front"""
-    for window in qtile.current_group.windows:
+    for window in self.current_group.windows:
         if window.floating:
             window.bring_to_front()
 
 
 @lazy.function
-def clear_urgent(qtile: Qtile, trigger: str) -> None:
+def clear_urgent(self: Qtile, trigger: str) -> None:
     """Clear the urgent flags for windows in a group"""
-    groupbox: widget.groupbox.GroupBox | None = qtile.widgets_map.get("groupbox")
+    groupbox: widget.groupbox.GroupBox | None = self.widgets_map.get("groupbox")
     if groupbox is None:
         return
 
@@ -276,8 +284,8 @@ def clear_urgent(qtile: Qtile, trigger: str) -> None:
             if window.urgent:
                 window.urgent = False
     elif trigger == "keybind":
-        groups = qtile.groups
-        for group in groups:
+        all_groups = self.groups
+        for group in all_groups:
             for window in group.windows:
                 if window.urgent:
                     window.urgent = False
@@ -286,7 +294,7 @@ def clear_urgent(qtile: Qtile, trigger: str) -> None:
 
 
 @lazy.function
-def notification(qtile: Qtile, request: str) -> None:
+def notification(_self: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
     title: str = ""
     message: str = ""
@@ -327,7 +335,7 @@ def notification(qtile: Qtile, request: str) -> None:
 
 
 @lazy.function
-def toggle_microphone(qtile: Qtile) -> None:
+def toggle_microphone(_self: Qtile) -> None:
     """Run the toggle command and then send notification to report status of microphone"""
     try:
         subprocess.call(["amixer set Capture toggle"], shell=True)
@@ -350,76 +358,76 @@ def toggle_microphone(qtile: Qtile) -> None:
 
 
 @lazy.function
-def toggle_layout(qtile: Qtile, layout_name: str) -> None:
+def toggle_layout(self: Qtile, layout_name: str) -> None:
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
     assert (
-        qtile.current_group.screen is not None
+        self.current_group.screen is not None
     ), "The screen should not be none for the current group"
-    screen_rect = qtile.current_group.screen.get_rect()
-    qtile.current_group.layout.hide()
-    if qtile.current_group.layout.name == layout_name:
-        qtile.current_group.setlayout(layout_names["monadtall"])
+    screen_rect = self.current_group.screen.get_rect()
+    self.current_group.layout.hide()
+    if self.current_group.layout.name == layout_name:
+        self.current_group.setlayout(layout_names["monadtall"])
     else:
-        qtile.current_group.setlayout(layout_name)
-    qtile.current_group.layout.show(screen_rect)
+        self.current_group.setlayout(layout_name)
+    self.current_group.layout.show(screen_rect)
 
 
 @lazy.function
-def toggle_widget_info(qtile: Qtile) -> None:
+def toggle_widget_info(self: Qtile) -> None:
     """Toggle all widgets text info"""
-    for widget in qtile.widgets_map:
-        if hasattr(qtile.widgets_map[widget], "show_text"):
-            qtile.widgets_map[widget].toggle_text()  # type: ignore
+    for widget in self.widgets_map:
+        if hasattr(self.widgets_map[widget], "show_text"):
+            self.widgets_map[widget].toggle_text()  # type: ignore
 
 
 @lazy.function
-def next_window(qtile: Qtile) -> None:
+def next_window(self: Qtile) -> None:
     """If treetab or max layout, cycle next window"""
     if (
-        qtile.current_layout.name == layout_names["max"]
-        or qtile.current_layout.name == layout_names["treetab"]
+        self.current_layout.name == layout_names["max"]
+        or self.current_layout.name == layout_names["treetab"]
     ):
-        qtile.current_group.layout.down()
+        self.current_group.layout.down()
 
 
 @lazy.function
-def focus_previous_group(qtile: Qtile) -> None:
+def focus_previous_group(self: Qtile) -> None:
     """Go to the previous group"""
-    group: _Group = qtile.current_screen.group
-    group_index: int = qtile.groups.index(group)
+    group: _Group = self.current_screen.group
+    group_index: int = self.groups.index(group)
     previous_group: _Group = group.get_previous_group(skip_empty=False)
-    previous_group_index: int = qtile.groups.index(previous_group)
+    previous_group_index: int = self.groups.index(previous_group)
     if previous_group_index < group_index:
-        qtile.current_screen.set_group(previous_group)
+        self.current_screen.set_group(previous_group)
 
 
 @lazy.function
-def focus_next_group(qtile: Qtile) -> None:
+def focus_next_group(self: Qtile) -> None:
     """Go to the next group"""
-    group: _Group = qtile.current_screen.group
-    group_index: int = qtile.groups.index(group)
+    group: _Group = self.current_screen.group
+    group_index: int = self.groups.index(group)
     next_group: _Group = group.get_next_group(skip_empty=False)
-    next_group_index: int = qtile.groups.index(next_group)
+    next_group_index: int = self.groups.index(next_group)
     if next_group_index > group_index:
-        qtile.current_screen.set_group(next_group)
+        self.current_screen.set_group(next_group)
 
 
 @lazy.function
-def window_to_previous_screen(qtile: Qtile) -> None:
+def window_to_previous_screen(self: Qtile) -> None:
     """Send the window to the previous screen"""
-    i: int = qtile.screens.index(qtile.current_screen)
-    if i != 0 and qtile.current_window is not None:
-        group: str = qtile.screens[i - 1].group.name
-        qtile.current_window.togroup(group)
+    i: int = self.screens.index(self.current_screen)
+    if i != 0 and self.current_window is not None:
+        group: str = self.screens[i - 1].group.name
+        self.current_window.togroup(group)
 
 
 @lazy.function
-def window_to_next_screen(qtile: Qtile) -> None:
+def window_to_next_screen(self: Qtile) -> None:
     """Send the window to the next screen"""
-    i: int = qtile.screens.index(qtile.current_screen)
-    if i + 1 != len(qtile.screens) and qtile.current_window is not None:
-        group: str = qtile.screens[i + 1].group.name
-        qtile.current_window.togroup(group)
+    i: int = self.screens.index(self.current_screen)
+    if i + 1 != len(self.screens) and self.current_window is not None:
+        group: str = self.screens[i + 1].group.name
+        self.current_window.togroup(group)
 
 
 # Layouts
@@ -514,7 +522,6 @@ keys = [
     EzKey("M-f", lazy.window.toggle_fullscreen()),
     EzKey("M-S-f", lazy.window.toggle_floating()),
     EzKey("M-<space>", lazy.layout.flip()),
-    EzKey("M-<Tab>", lazy.spawn(SWITCHER)),
     EzKey("M-S-<Tab>", float_to_front()),
     EzKey("M-b", lazy.hide_show_bar()),
     EzKey("M-u", clear_urgent("keybind")),
