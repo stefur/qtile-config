@@ -175,13 +175,6 @@ def toggle_fullscreen_off(client: Window) -> None:
             window.toggle_fullscreen()
 
 
-@hook.subscribe.client_name_updated
-def push_spotify(client: Window) -> None:
-    """Push Spotify to correct group since it's wm_class setting is slow"""
-    if client.info().get("name") == "Spotify" and not client.get_wm_class():
-        client.togroup("4")
-
-
 @hook.subscribe.client_killed
 def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
