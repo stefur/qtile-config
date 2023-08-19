@@ -46,6 +46,8 @@ if TYPE_CHECKING:
     from typing import Any
     from libqtile.core.manager import Qtile
 
+assert qtile is not None, "This should never be None."
+
 MOD = "mod4"
 
 modifier_keys: dict[str, str] = {
@@ -75,7 +77,7 @@ font_setting: tuple[str, int] = ("FiraMono Nerd Font Bold", 13)
 HAS_BATTERY: bool = os.path.isdir("/sys/class/power_supply/BAT0")
 
 group_assignments: dict[str, Any[str, ...]] = {
-    "1": ("firefox"),
+    "1": (BROWSER),
     "2": (
         "valheim.x86_64",
         "battle.net.exe",
@@ -101,22 +103,20 @@ wl_input_rules = {
 
 @hook.subscribe.startup_once
 def autostart() -> None:
-    """Autostart things from script when qtile starts and hide the bar as default"""
+    """Autostart things from script when qtile starts"""
     with subprocess.Popen("autostart.sh", shell=True) as process:
         hook.subscribe.shutdown(process.terminate)
-
 
 @hook.subscribe.client_name_updated
 def follow_url(client: Window) -> None:
     """If Firefox is flagged as urgent, focus it"""
-    assert qtile is not None, "This should never be None"
 
     wm_class: list | None = client.get_wm_class()
     if wm_class is None:
         return
 
     for item in wm_class:
-        if BROWSER in item and client.urgent is True and client.group is not None:
+        if BROWSER in item.lower() and client.urgent is True and client.group is not None:
             qtile.current_screen.set_group(client.group)
             client.group.focus(client)
 
@@ -124,10 +124,10 @@ def follow_url(client: Window) -> None:
 @hook.subscribe.float_change
 def center_window() -> None:
     """Centers all the floating windows"""
-    assert qtile is not None, "This should never be None"
 
     try:
-        qtile.current_window.center()
+        if qtile.current_window is not None:
+            qtile.current_window.center()
     except AttributeError:
         return
 
@@ -135,7 +135,6 @@ def center_window() -> None:
 @hook.subscribe.layout_change
 def max_win_count(new_layout: MonadTall | Max | TreeTab, group: _Group) -> None:
     """Displays the window counter if the max layout is used"""
-    assert qtile is not None, "This should never be None"
     del group  # Unused parameter
 
     try:
@@ -160,7 +159,7 @@ def assign_app_group(client: Window) -> None:
 
     try:
         for group, apps in group_assignments.items():
-            if any(item.startswith(apps) for item in wm_class):
+            if any(item.lower().startswith(apps) for item in wm_class):
                 client.togroup(group)
     except IndexError:
         return
@@ -175,7 +174,6 @@ def toggle_fullscreen_off(client: Window) -> None:
         return
 
     if group is None:
-        assert qtile is not None, "This should never be None"
         group = qtile.current_group
 
     for window in group.windows:
@@ -186,7 +184,6 @@ def toggle_fullscreen_off(client: Window) -> None:
 @hook.subscribe.client_killed
 def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
-    assert qtile is not None, "This should never be None"
 
     if (
         client.group is None
@@ -209,30 +206,12 @@ def fallback_default_layout(client: Window) -> None:
     qtile.to_layout_index(default_layout_index, group_name)
 
 
-@hook.subscribe.client_killed
-def minimize_discord(client: Window) -> None:
-    """Discord workaround to fix lingering residual window after its been closed to tray"""
-    wm_class: list | None = None
-    if isinstance(client, Window):
-        wm_class = client.get_wm_class()
-
-    if wm_class is None:
-        return
-
-    for item in wm_class:
-        if "discord" in item:
-            client.toggle_floating()
-            client.toggle_minimize()
-
-
 @hook.subscribe.current_screen_change
 def warp_cursor() -> None:
     """Warp cursor to focused screen"""
-    assert qtile is not None, "This should never be None"
     qtile.warp_to_screen()
 
 
-@lazy.function
 def spawn_or_focus(self: Qtile, app: str) -> None:
     """Check if the app being launched is already running, if so focus it"""
     window = None
@@ -262,7 +241,6 @@ def spawn_or_focus(self: Qtile, app: str) -> None:
         self.current_group.focus(window)
 
 
-@lazy.function
 def float_to_front(self: Qtile) -> None:
     """Bring all floating windows of the group to front"""
     for window in self.current_group.windows:
@@ -270,7 +248,6 @@ def float_to_front(self: Qtile) -> None:
             window.bring_to_front()
 
 
-@lazy.function
 def clear_urgent(self: Qtile, trigger: str) -> None:
     """Clear the urgent flags for windows in a group"""
     groupbox: widget.groupbox.GroupBox | None = self.widgets_map.get("groupbox")
@@ -293,7 +270,6 @@ def clear_urgent(self: Qtile, trigger: str) -> None:
     groupbox.draw()
 
 
-@lazy.function
 def notification(_self: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
     title: str = ""
@@ -334,7 +310,6 @@ def notification(_self: Qtile, request: str) -> None:
         logger.warning(f"Failed to send notification: {err}")
 
 
-@lazy.function
 def toggle_microphone(_self: Qtile) -> None:
     """Run the toggle command and then send notification to report status of microphone"""
     try:
@@ -357,7 +332,6 @@ def toggle_microphone(_self: Qtile) -> None:
         logger.warning(f"Failed to mute microphone: {err}")
 
 
-@lazy.function
 def toggle_layout(self: Qtile, layout_name: str) -> None:
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
     assert (
@@ -372,15 +346,13 @@ def toggle_layout(self: Qtile, layout_name: str) -> None:
     self.current_group.layout.show(screen_rect)
 
 
-@lazy.function
 def toggle_widget_info(self: Qtile) -> None:
     """Toggle all widgets text info"""
-    for widget in self.widgets_map:
-        if hasattr(self.widgets_map[widget], "show_text"):
-            self.widgets_map[widget].toggle_text()  # type: ignore
+    for wdgt in self.widgets_map:
+        if hasattr(self.widgets_map[wdgt], "show_text"):
+            self.widgets_map[wdgt].toggle_text()  # type: ignore
 
 
-@lazy.function
 def next_window(self: Qtile) -> None:
     """If treetab or max layout, cycle next window"""
     if (
@@ -390,7 +362,6 @@ def next_window(self: Qtile) -> None:
         self.current_group.layout.down()
 
 
-@lazy.function
 def focus_previous_group(self: Qtile) -> None:
     """Go to the previous group"""
     group: _Group = self.current_screen.group
@@ -401,7 +372,6 @@ def focus_previous_group(self: Qtile) -> None:
         self.current_screen.set_group(previous_group)
 
 
-@lazy.function
 def focus_next_group(self: Qtile) -> None:
     """Go to the next group"""
     group: _Group = self.current_screen.group
@@ -412,21 +382,19 @@ def focus_next_group(self: Qtile) -> None:
         self.current_screen.set_group(next_group)
 
 
-@lazy.function
 def window_to_previous_screen(self: Qtile) -> None:
     """Send the window to the previous screen"""
-    i: int = self.screens.index(self.current_screen)
-    if i != 0 and self.current_window is not None:
-        group: str = self.screens[i - 1].group.name
+    screen_i: int = self.screens.index(self.current_screen)
+    if screen_i != 0 and self.current_window is not None:
+        group: str = self.screens[screen_i - 1].group.name
         self.current_window.togroup(group)
 
 
-@lazy.function
 def window_to_next_screen(self: Qtile) -> None:
     """Send the window to the next screen"""
-    i: int = self.screens.index(self.current_screen)
-    if i + 1 != len(self.screens) and self.current_window is not None:
-        group: str = self.screens[i + 1].group.name
+    screen_i: int = self.screens.index(self.current_screen)
+    if screen_i + 1 != len(self.screens) and self.current_window is not None:
+        group: str = self.screens[screen_i + 1].group.name
         self.current_window.togroup(group)
 
 
@@ -511,10 +479,10 @@ keys = [
     # Move focus/windows between screens
     EzKey("M-<period>", lazy.next_screen()),
     EzKey("M-<comma>", lazy.prev_screen()),
-    EzKey("M-S-<period>", window_to_next_screen()),
-    EzKey("M-S-<comma>", window_to_previous_screen()),
-    EzKey("M-C-<Right>", focus_next_group()),
-    EzKey("M-C-<Left>", focus_previous_group()),
+    EzKey("M-S-<period>", lazy.function(window_to_next_screen)),
+    EzKey("M-S-<comma>", lazy.function(window_to_previous_screen)),
+    EzKey("M-C-<Right>", lazy.function(focus_next_group)),
+    EzKey("M-C-<Left>", lazy.function(focus_previous_group)),
     # Various window controls
     EzKey("M-S-c", lazy.window.kill()),
     EzKey("M-C-c", lazy.window.center()),
@@ -522,26 +490,26 @@ keys = [
     EzKey("M-f", lazy.window.toggle_fullscreen()),
     EzKey("M-S-f", lazy.window.toggle_floating()),
     EzKey("M-<space>", lazy.layout.flip()),
-    EzKey("M-S-<Tab>", float_to_front()),
+    EzKey("M-S-<Tab>", lazy.float_to_front()),
     EzKey("M-b", lazy.hide_show_bar()),
-    EzKey("M-u", clear_urgent("keybind")),
-    EzKey("M-i", toggle_widget_info()),
+    EzKey("M-u", lazy.clear_urgent("keybind")),
+    EzKey("M-i", lazy.toggle_widget_info()),
     # Layout toggles
-    EzKey("M-m", toggle_layout(layout_names["max"])),
-    EzKey("M-t", toggle_layout(layout_names["treetab"])),
+    EzKey("M-m", lazy.function(toggle_layout, layout_names["max"])),
+    EzKey("M-t", lazy.function(toggle_layout, layout_names["treetab"])),
     # Notification commands
-    EzKey("M-S-b", notification("battery")),
-    EzKey("M-S-d", notification("date")),
-    EzKey("M-S-w", notification("wifi")),
+    EzKey("M-S-b", lazy.function(notification, "battery")),
+    EzKey("M-S-d", lazy.function(notification, "date")),
+    EzKey("M-S-w", lazy.function(notification, "wifi")),
     # Some app shortcuts
-    EzKey("M-w", spawn_or_focus(BROWSER)),
+    EzKey("M-w", lazy.function(spawn_or_focus, BROWSER)),
     EzKey("M-<Return>", lazy.spawn(TERMINAL)),
     EzKey("M-C-<Return>", lazy.spawn(FILE_MANAGER)),
-    EzKey("M-c", spawn_or_focus("signal-desktop")),
+    EzKey("M-c", lazy.function(spawn_or_focus, "signal-desktop")),
     EzKey("M-r", lazy.spawn(LAUNCHER)),
-    EzKey("M-d", spawn_or_focus("discord")),
-    EzKey("M-s", spawn_or_focus("spotify")),
-    EzKey("M-g", spawn_or_focus("steam-native")),
+    EzKey("M-d", lazy.function(spawn_or_focus, "Discord")),
+    EzKey("M-s", lazy.function(spawn_or_focus, "spotify")),
+    EzKey("M-g", lazy.function(spawn_or_focus, "steam-native")),
     EzKey("M-p", lazy.spawn("passmenu.sh")),
     # KeyChords for some special actions
     KeyChord(
@@ -567,7 +535,7 @@ keys = [
     EzKey("<XF86AudioLowerVolume>", lazy.widget["volumectrl"].decrease_vol()),
     EzKey("<XF86AudioRaiseVolume>", lazy.widget["volumectrl"].increase_vol()),
     # Microphone toggle muted/unmuted
-    EzKey("M-q", toggle_microphone()),
+    EzKey("M-q", lazy.function(toggle_microphone)),
     # System controls
     EzKey("M-l", lazy.spawn("lock.sh")),
     EzKey("M-S-r", lazy.reload_config()),
@@ -663,13 +631,13 @@ widgets = [
         foreground=colors["text"],
         urgent_alert_method="text",
         urgent_text=colors["urgent"],
-        mouse_callbacks={"Button3": clear_urgent("click")},
+        mouse_callbacks={"Button3": lazy.clear_urgent("click")},
     ),
     widget.CurrentLayout(
         padding=8,
         foreground=colors["primary"],
         mouse_callbacks={
-            "Button3": next_window(),
+            "Button3": lazy.next_window(),
         },
     ),
     widget.WindowCount(
@@ -677,27 +645,27 @@ widgets = [
         foreground=colors["background"],
         text_format="[{num}]",
         mouse_callbacks={
-            "Button3": next_window(),
+            "Button3": lazy.next_window(),
         },
     ),
     widget.WindowName(
         max_chars=50,
         empty_group_string="Desktop",
         mouse_callbacks={
-            "Button3": next_window(),
+            "Button3": lazy.next_window(),
         },
     ),
     Spotify(
         mouse_callbacks={
             "Button1": lazy.spawn(f"{MUSIC_CTRL}PlayPause"),
-            "Button3": spawn_or_focus("spotify"),
+            "Button3": lazy.spawn_or_focus("spotify"),
         }
     ),
-    widget.Systray(padding=10, background=colors["background"]),
+    widget.StatusNotifier(padding=10, background=colors["background"]),
     widget.Sep(padding=8, foreground=colors["background"]),
     Wifi(
         foreground=colors["primary"],
-        mouse_callbacks={"Button1": notification("wifi")},
+        mouse_callbacks={"Button1": lazy.notification("wifi")},
         padding=10,
     ),
     VolumeCtrl(
@@ -709,7 +677,7 @@ widgets = [
         format="%H:%M",
         padding=10,
         mouse_callbacks={
-            "Button1": notification("date"),
+            "Button1": lazy.notification("date"),
             "Button3": lazy.spawn("python -m webbrowser https://kalender.se"),
         },
     ),
@@ -723,14 +691,14 @@ if HAS_BATTERY:
             padding=10,
             foreground=colors["primary"],
             mouse_callbacks={
-                "Button1": notification("battery"),
+                "Button1": lazy.notification("battery"),
                 "Button3": lazy.widget["custombattery"].toggle_text(),
             },
         ),
     )
 
 # Screen and bar
-screens = [Screen(top=bar.Bar(widgets=widgets, size=26))]
+screens = [Screen(top=bar.Bar(widgets=widgets, size=34))]
 
 # Misc
 dgroups_key_binder = None
