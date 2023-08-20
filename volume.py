@@ -4,7 +4,7 @@ from __future__ import annotations
 import subprocess
 import re
 from libqtile import widget
-
+from libqtile.command.base import expose_command
 from colors import colors
 
 volume_level_icons: dict[str, int] = {"󰕾": 66, "󰖀": 33, "󰕿": 0}
@@ -18,10 +18,10 @@ class VolumeCtrl(widget.TextBox):
 
         self.add_callbacks(
             {
-                "Button1": self.cmd_mute,
+                "Button1": self.mute,
                 "Button3": self.toggle_text,
-                "Button4": self.cmd_increase_vol,
-                "Button5": self.cmd_decrease_vol,
+                "Button4": self.increase_vol,
+                "Button5": self.decrease_vol,
             }
         )
 
@@ -56,20 +56,23 @@ class VolumeCtrl(widget.TextBox):
         except AttributeError:
             return None
 
-    def cmd_increase_vol(self) -> None:
+    @expose_command()
+    def increase_vol(self) -> None:
         """Increase the volume and refresh volume and icon"""
 
         if self.volume is not None and self.volume < 100:
             subprocess.call(["pactl set-sink-volume 0 +5%"], shell=True)
             self.volume = self.get_vol()
 
-    def cmd_decrease_vol(self) -> None:
+    @expose_command()
+    def decrease_vol(self) -> None:
         """Decrease the volume and refresh volume and icon"""
 
         subprocess.call(["pactl set-sink-volume 0 -5%"], shell=True)
         self.volume = self.get_vol()
 
-    def cmd_mute(self) -> None:
+    @expose_command()
+    def mute(self) -> None:
         """Toggle to mute/unmute volume and refresh icon"""
 
         subprocess.call(["pactl set-sink-mute 0 toggle"], shell=True)

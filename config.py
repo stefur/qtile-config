@@ -321,9 +321,9 @@ def toggle_microphone(_self: Qtile) -> None:
     try:
         subprocess.call(["pactl set-source-mute 0 toggle"], shell=True)
 
-        message = subprocess.check_output(["pactl get-source-mute 0"], shell=True).decode(
-            "utf-8"
-        )
+        message = subprocess.check_output(
+            ["pactl get-source-mute 0"], shell=True
+        ).decode("utf-8")
 
         if "yes" in message:
             message = "Muted"
@@ -408,7 +408,14 @@ layout_theme: dict[str, int | str] = {
 layout_names: dict[str, str] = {"monadtall": "tall~", "max": "max~", "treetab": "tree~"}
 
 layouts = [
-    MonadTall(**layout_theme, single_border_width=0, name=layout_names["monadtall"]),
+    MonadTall(
+        **layout_theme,
+        single_border_width=0,
+        single_margin = 0,
+        margin=10,
+        new_client_position="top",
+        name=layout_names["monadtall"],
+    ),
     Max(name=layout_names["max"]),
     TreeTab(
         name=layout_names["treetab"],
@@ -542,7 +549,8 @@ keys = [
     EzKey("M-l", lazy.spawn("lock.sh")),
     EzKey("M-S-r", lazy.reload_config()),
     EzKey("M-C-r", lazy.restart()),
-    EzKey("M-S-q", lazy.shutdown())]
+    EzKey("M-S-q", lazy.shutdown()),
+]
 
 # Groups
 group_settings: list[tuple[str, dict[str, Any]]] = [
@@ -620,10 +628,10 @@ widgets = [
         disable_drag=True,
         use_mouse_wheel=False,
         padding=6,
-        borderwidth=3,
+        borderwidth=4,
         active=colors["primary"],
         inactive=colors["secondary"],
-        rounded=False,
+        rounded=True,
         highlight_color=colors["background"],
         block_highlight_text_color=colors["background"],
         highlight_method="block",
