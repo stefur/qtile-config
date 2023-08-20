@@ -7,7 +7,7 @@ from libqtile import widget
 
 from colors import colors
 
-volume_level_icons: dict[str, int] = {"\ufa7d": 66, "\ufa7f": 33, "\ufa7e": 0}
+volume_level_icons: dict[str, int] = {"󰕾": 66, "󰖀": 33, "󰕿": 0}
 
 
 class VolumeCtrl(widget.TextBox):
@@ -18,10 +18,10 @@ class VolumeCtrl(widget.TextBox):
 
         self.add_callbacks(
             {
-                "Button1": self.mute,
+                "Button1": self.cmd_mute,
                 "Button3": self.toggle_text,
-                "Button4": self.increase_vol,
-                "Button5": self.decrease_vol,
+                "Button4": self.cmd_increase_vol,
+                "Button5": self.cmd_decrease_vol,
             }
         )
 
@@ -36,12 +36,14 @@ class VolumeCtrl(widget.TextBox):
             output = subprocess.check_output(
                 ["pactl get-sink-volume 0"], shell=True
             ).decode("utf-8")
+            mute = subprocess.check_output(
+                ["pactl get-sink-mute 0"], shell=True
+            ).decode("utf-8")
             vol = int(self.find_value.search(output).groups()[0])  # type: ignore
             icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
 
-            if re.search("off", output):
-                vol = 0
-                icon = "\ufa80"
+            if re.search("yes", mute):
+                icon = "󰸈"
 
             if self.show_text:
                 self.text = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
@@ -54,20 +56,20 @@ class VolumeCtrl(widget.TextBox):
         except AttributeError:
             return None
 
-    def increase_vol(self) -> None:
+    def cmd_increase_vol(self) -> None:
         """Increase the volume and refresh volume and icon"""
 
         if self.volume is not None and self.volume < 100:
             subprocess.call(["pactl set-sink-volume 0 +5%"], shell=True)
             self.volume = self.get_vol()
 
-    def decrease_vol(self) -> None:
+    def cmd_decrease_vol(self) -> None:
         """Decrease the volume and refresh volume and icon"""
 
         subprocess.call(["pactl set-sink-volume 0 -5%"], shell=True)
         self.volume = self.get_vol()
 
-    def mute(self) -> None:
+    def cmd_mute(self) -> None:
         """Toggle to mute/unmute volume and refresh icon"""
 
         subprocess.call(["pactl set-sink-mute 0 toggle"], shell=True)

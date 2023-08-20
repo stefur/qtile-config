@@ -512,7 +512,7 @@ keys = [
     EzKey("M-p", lazy.spawn("pass.sh")),
     EzKey("M-C-m", lazy.spawn("mount.sh")),
     EzKey("M-e", lazy.spawn("emojis.sh")),
-    EzKey("M-S-p", lazy.spawn("grim -g '$(slurp)' - | wl-copy")),
+    EzKey("M-S-p", lazy.spawn("screenshot.sh")),
     # KeyChords for some special actions
     KeyChord(
         [MOD],
