@@ -1,11 +1,11 @@
 """
-Defining colors, using catppuccin atm
+Defining colors
 """
 
 colors = {
-    "primary": "#C9CBFF",  # Lavender
-    "secondary": "#6E6C7E",  # Gray 0
-    "background": "#161320",  # Black 0
-    "text": "#D9E0EE",  # White
-    "urgent": "#F28FAD",  # Red
+    "primary": "#B6AFC9", 
+    "secondary": "#54546D",
+    "background": "#1D1D16",
+    "text": "#D9E0EE",
+    "urgent": "#E46876",
 }

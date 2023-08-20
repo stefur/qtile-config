@@ -72,7 +72,7 @@ FILE_MANAGER = "pcmanfm"
 MUSIC_CTRL = """dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify
  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."""
 
-font_setting: tuple[str, int] = ("FiraMono Nerd Font Bold", 13)
+font_setting: tuple[str, int] = ("FiraMono Nerd Font", 13)
 
 HAS_BATTERY: bool = os.path.isdir("/sys/class/power_supply/BAT0")
 
@@ -87,7 +87,7 @@ group_assignments: dict[str, Any[str, ...]] = {
         "steam_app",
     ),
     "3": ("discord", "signal"),
-    "4": ("Spotify"),
+    "4": ("spotify"),
     "5": ("Steam"),
 }
 
@@ -107,6 +107,7 @@ def autostart() -> None:
     with subprocess.Popen("autostart.sh", shell=True) as process:
         hook.subscribe.shutdown(process.terminate)
 
+
 @hook.subscribe.client_name_updated
 def follow_url(client: Window) -> None:
     """If Firefox is flagged as urgent, focus it"""
@@ -116,7 +117,11 @@ def follow_url(client: Window) -> None:
         return
 
     for item in wm_class:
-        if BROWSER in item.lower() and client.urgent is True and client.group is not None:
+        if (
+            BROWSER in item.lower()
+            and client.urgent is True
+            and client.group is not None
+        ):
             qtile.current_screen.set_group(client.group)
             client.group.focus(client)
 
@@ -186,7 +191,8 @@ def fallback_default_layout(client: Window) -> None:
     """Reset a group to default layout when theres is only one window left"""
 
     if (
-        client.group is None
+        not isinstance(client, Window)
+        or client.group is None
         or client.group.screen != qtile.current_screen
         or client.floating is True
     ):
@@ -197,7 +203,7 @@ def fallback_default_layout(client: Window) -> None:
     except AttributeError:
         win_count = 0
 
-    if win_count > 2:
+    if win_count > 1:
         return
 
     group_name: str = client.group.name
@@ -313,16 +319,16 @@ def notification(_self: Qtile, request: str) -> None:
 def toggle_microphone(_self: Qtile) -> None:
     """Run the toggle command and then send notification to report status of microphone"""
     try:
-        subprocess.call(["amixer set Capture toggle"], shell=True)
+        subprocess.call(["pactl set-source-mute 0 toggle"], shell=True)
 
-        message = subprocess.check_output(["amixer sget Capture"], shell=True).decode(
+        message = subprocess.check_output(["pactl get-source-mute 0"], shell=True).decode(
             "utf-8"
         )
 
-        if "off" in message:
+        if "yes" in message:
             message = "Muted"
 
-        elif "on" in message:
+        elif "no" in message:
             message = "Unmuted"
 
         title = "Microphone"
@@ -355,52 +361,46 @@ def toggle_widget_info(self: Qtile) -> None:
 
 def next_window(self: Qtile) -> None:
     """If treetab or max layout, cycle next window"""
-    if (
-        self.current_layout.name == layout_names["max"]
-        or self.current_layout.name == layout_names["treetab"]
-    ):
+    if self.current_layout.name in (layout_names["max"], layout_names["treetab"]):
         self.current_group.layout.down()
 
 
-def focus_previous_group(self: Qtile) -> None:
-    """Go to the previous group"""
+def focus_group(self: Qtile, direction: str) -> None:
+    """Go to next/previous group"""
     group: _Group = self.current_screen.group
-    group_index: int = self.groups.index(group)
-    previous_group: _Group = group.get_previous_group(skip_empty=False)
-    previous_group_index: int = self.groups.index(previous_group)
-    if previous_group_index < group_index:
-        self.current_screen.set_group(previous_group)
+
+    go_to: _Group
+
+    match direction:
+        case "next":
+            go_to = group.get_next_group(skip_empty=False)
+        case "previous":
+            go_to = group.get_previous_group(skip_empty=False)
+        case _:
+            return
+
+    self.current_screen.set_group(go_to)
 
 
-def focus_next_group(self: Qtile) -> None:
-    """Go to the next group"""
-    group: _Group = self.current_screen.group
-    group_index: int = self.groups.index(group)
-    next_group: _Group = group.get_next_group(skip_empty=False)
-    next_group_index: int = self.groups.index(next_group)
-    if next_group_index > group_index:
-        self.current_screen.set_group(next_group)
-
-
-def window_to_previous_screen(self: Qtile) -> None:
-    """Send the window to the previous screen"""
+def window_to_screen(self: Qtile, direction: str) -> None:
+    """Send a window to next/previous screen"""
     screen_i: int = self.screens.index(self.current_screen)
+
     if screen_i != 0 and self.current_window is not None:
-        group: str = self.screens[screen_i - 1].group.name
-        self.current_window.togroup(group)
+        group: str
 
+        match direction:
+            case "next":
+                group = self.screens[screen_i + 1].group.name
+            case "previous":
+                group = self.screens[screen_i - 1].group.name
 
-def window_to_next_screen(self: Qtile) -> None:
-    """Send the window to the next screen"""
-    screen_i: int = self.screens.index(self.current_screen)
-    if screen_i + 1 != len(self.screens) and self.current_window is not None:
-        group: str = self.screens[screen_i + 1].group.name
-        self.current_window.togroup(group)
+    self.current_window.togroup(group)
 
 
 # Layouts
 layout_theme: dict[str, int | str] = {
-    "border_width": 2,
+    "border_width": 3,
     "border_focus": colors["primary"],
     "border_normal": colors["secondary"],
 }
@@ -434,9 +434,7 @@ layouts = [
 floating_layout = Floating(
     float_rules=[
         *Floating.default_float_rules,
-        Match(wm_class="pinentry-gtk-2"),
-        Match(wm_class="Lxappearance"),
-        Match(wm_class="Xfce4-taskmanager"),
+        Match(wm_class="Pinentry-gtk-2"),
         Match(wm_class="pavucontrol"),
         Match(title="Execute File", wm_class="Pcmanfm"),
         Match(title="Confirm File Replacing", wm_class="Pcmanfm"),
@@ -477,12 +475,13 @@ keys = [
     EzKey("M-A-<Down>", lazy.layout.shrink().when(layout=layout_names["monadtall"])),
     EzKey("M-A-<Up>", lazy.layout.grow().when(layout=layout_names["monadtall"])),
     # Move focus/windows between screens
+    EzKey("M-<Tab>", lazy.screen.toggle_group()),
     EzKey("M-<period>", lazy.next_screen()),
     EzKey("M-<comma>", lazy.prev_screen()),
-    EzKey("M-S-<period>", lazy.function(window_to_next_screen)),
-    EzKey("M-S-<comma>", lazy.function(window_to_previous_screen)),
-    EzKey("M-C-<Right>", lazy.function(focus_next_group)),
-    EzKey("M-C-<Left>", lazy.function(focus_previous_group)),
+    EzKey("M-S-<period>", lazy.function(window_to_screen, "next")),
+    EzKey("M-S-<comma>", lazy.function(window_to_screen, "previous")),
+    EzKey("M-C-<Right>", lazy.function(focus_group, "next")),
+    EzKey("M-C-<Left>", lazy.function(focus_group, "previous")),
     # Various window controls
     EzKey("M-S-c", lazy.window.kill()),
     EzKey("M-C-c", lazy.window.center()),
@@ -490,7 +489,7 @@ keys = [
     EzKey("M-f", lazy.window.toggle_fullscreen()),
     EzKey("M-S-f", lazy.window.toggle_floating()),
     EzKey("M-<space>", lazy.layout.flip()),
-    EzKey("M-S-<Tab>", lazy.float_to_front()),
+    EzKey("M-S-<Tab>", lazy.function(float_to_front)),
     EzKey("M-b", lazy.hide_show_bar()),
     EzKey("M-u", lazy.clear_urgent("keybind")),
     EzKey("M-i", lazy.toggle_widget_info()),
@@ -510,7 +509,10 @@ keys = [
     EzKey("M-d", lazy.function(spawn_or_focus, "Discord")),
     EzKey("M-s", lazy.function(spawn_or_focus, "spotify")),
     EzKey("M-g", lazy.function(spawn_or_focus, "steam-native")),
-    EzKey("M-p", lazy.spawn("passmenu.sh")),
+    EzKey("M-p", lazy.spawn("pass.sh")),
+    EzKey("M-C-m", lazy.spawn("mount.sh")),
+    EzKey("M-e", lazy.spawn("emojis.sh")),
+    EzKey("M-S-p", lazy.spawn("grim -g '$(slurp)' - | wl-copy")),
     # KeyChords for some special actions
     KeyChord(
         [MOD],
@@ -540,9 +542,7 @@ keys = [
     EzKey("M-l", lazy.spawn("lock.sh")),
     EzKey("M-S-r", lazy.reload_config()),
     EzKey("M-C-r", lazy.restart()),
-    EzKey("M-S-q", lazy.shutdown()),
-    EzKey("M-C-<Escape>", lazy.spawn("poweroff")),
-]
+    EzKey("M-S-q", lazy.shutdown())]
 
 # Groups
 group_settings: list[tuple[str, dict[str, Any]]] = [
@@ -580,7 +580,8 @@ groups.append(
             DropDown("terminal", TERMINAL, **scratchpad_conf),
             DropDown(
                 "newsboat",
-                f"{TERMINAL} -e newsboat -C=~/.config/newsboat/config -u=~/Syncthing/Files/newsboat/urls -c=~/Syncthing/Files/newsboat/cache.db",
+                f"""{TERMINAL} newsboat -C=~/.config/newsboat/config 
+                -u=~/sync/files/newsboat/urls -c=~/sync/files/newsboat/cache.db""",
                 **scratchpad_conf,
             ),
         ],
@@ -602,12 +603,12 @@ mouse = [
 ]
 
 # Widgets & extension defaults
-widget_defaults = dict(
-    font=font_setting[0],
-    fontsize=font_setting[1],
-    background=colors["background"],
-    foreground=colors["text"],
-)
+widget_defaults = {
+    "font": font_setting[0],
+    "fontsize": font_setting[1],
+    "background": colors["background"],
+    "foreground": colors["text"],
+}
 
 extension_defaults = widget_defaults.copy()
 
@@ -710,4 +711,3 @@ reconfigure_screens = True
 auto_fullscreen = True
 auto_minimize = True
 focus_on_window_activation = "urgent"
-wmname = "LG3D"
