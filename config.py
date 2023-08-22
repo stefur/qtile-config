@@ -108,23 +108,18 @@ def autostart() -> None:
         hook.subscribe.shutdown(process.terminate)
 
 
-@hook.subscribe.client_name_updated
+@hook.subscribe.client_urgent_hint_changed
 def follow_url(client: Window) -> None:
     """If Firefox is flagged as urgent, focus it"""
 
     wm_class: list | None = client.get_wm_class()
-    if wm_class is None:
-        return
 
     for item in wm_class:
-        if (
-            BROWSER in item.lower()
-            and client.urgent is True
-            and client.group is not None
-        ):
-            qtile.current_screen.set_group(client.group)
-            client.group.focus(client)
-
+        match item:
+            case item if item.lower() in BROWSER and client.group is not None:
+                qtile.current_screen.set_group(client.group)
+                client.group.focus(client)
+                return
 
 @hook.subscribe.float_change
 def center_window() -> None:
