@@ -221,7 +221,7 @@ def spawn_or_focus(self: Qtile, app: str) -> None:
             wm_class: list | None = win.get_wm_class()
             if wm_class is None or win.group is None:
                 return
-            if any(item.lower() in app for item in wm_class):
+            if any(item.lower() in app.lower() for item in wm_class):
                 window = win
                 group = win.group
                 group.toscreen(toggle=False)
@@ -275,40 +275,37 @@ def notification(_self: Qtile, request: str) -> None:
     """Used for mouse callbacks and keybinds to send notifications"""
     title: str = ""
     message: str = ""
-    try:
-        if request == "wifi":
-            try:
-                iface = iwlib.get_iwconfig(WIFI_INTERFACE)
-                quality = iface["stats"]["quality"]
-                quality = round((quality / 70) * 100)
-                ssid = str(iface["ESSID"], encoding="utf-8")
-                title = "Wifi"
-                message = f"{ssid}\nSignal strength: {quality}%"
-            except KeyError:
-                title = "Disconnected"
-                message = ""
 
-        elif request == "date":
-            today = datetime.today()
-            todaysdate = today.strftime("%-d %B")
-            weekday = today.strftime("%A")
-            week = datetime.today().isocalendar()[1]
-            title = f"{todaysdate} ({weekday})"
-            message = f"Week {week}"
+    if request == "wifi":
+        try:
+            iface = iwlib.get_iwconfig(WIFI_INTERFACE)
+            quality = iface["stats"]["quality"]
+            quality = round((quality / 70) * 100)
+            ssid = str(iface["ESSID"], encoding="utf-8")
+            title = "Wifi"
+            message = f"{ssid}\nSignal strength: {quality}%"
+        except KeyError:
+            title = "Disconnected"
+            message = ""
 
-        elif request == "battery":
-            if HAS_BATTERY:
-                battery = psutil.sensors_battery()
-                assert battery is not None, "Battery must be found by psutil"
-                title = "Battery"
-                message = f"{round(battery.percent)}%"
-            else:
-                return
+    elif request == "date":
+        today = datetime.today()
+        todaysdate = today.strftime("%-d %B")
+        weekday = today.strftime("%A")
+        week = datetime.today().isocalendar()[1]
+        title = f"{todaysdate} ({weekday})"
+        message = f"Week {week}"
 
-        send_notification(title, message, timeout=2500, urgent=False)
+    elif request == "battery":
+        if HAS_BATTERY:
+            battery = psutil.sensors_battery()
+            assert battery is not None, "Battery must be found by psutil"
+            title = "Battery"
+            message = f"{round(battery.percent)}%"
+        else:
+            return
 
-    except Exception as err:
-        logger.warning(f"Failed to send notification: {err}")
+    send_notification(title, message, timeout=2500, urgent=False)
 
 
 def toggle_microphone(_self: Qtile) -> None:
@@ -330,7 +327,7 @@ def toggle_microphone(_self: Qtile) -> None:
         send_notification(title, message, timeout=2500, urgent=False)
 
     except subprocess.CalledProcessError as err:
-        logger.warning(f"Failed to mute microphone: {err}")
+        logger.warning("Failed to mute microphone: %s", err)
 
 
 def toggle_layout(self: Qtile, layout_name: str) -> None:
@@ -406,7 +403,7 @@ layouts = [
     MonadTall(
         **layout_theme,
         single_border_width=0,
-        single_margin = 0,
+        single_margin=0,
         margin=10,
         new_client_position="top",
         name=layout_names["monadtall"],
@@ -534,10 +531,17 @@ keys = [
     EzKey("M-9", lazy.spawn(f"{MUSIC_CTRL}Next")),
     EzKey("M-7", lazy.spawn(f"{MUSIC_CTRL}Previous")),
     # Media volume keys
-    EzKey("<XF86AudioMute>", lazy.widget["volumectrl"].mute()),
-    EzKey("M-S-m", lazy.widget["volumectrl"].mute()),  # Extra keybind
-    EzKey("<XF86AudioLowerVolume>", lazy.widget["volumectrl"].decrease_vol()),
-    EzKey("<XF86AudioRaiseVolume>", lazy.widget["volumectrl"].increase_vol()),
+    EzKey("<XF86AudioMute>", lazy.widget["volumectrl"].adjust_volume("mute")),
+    EzKey("M-S-m", lazy.widget["volumectrl"].adjust_volume("mute")),  # Extra keybind
+    EzKey(
+        "<XF86AudioLowerVolume>", lazy.widget["volumectrl"].adjust_volume("decrease")
+    ),
+    EzKey(
+        "<XF86AudioRaiseVolume>", lazy.widget["volumectrl"].adjust_volume("increase")
+    ),
+    # Brightness controll
+    EzKey("<XF86MonBrightnessDown>", lazy.spawn("brightnessctl set 5%-")),
+    EzKey("<XF86MonBrightnessUp>", lazy.spawn("brightnessctl set +5%")),
     # Microphone toggle muted/unmuted
     EzKey("M-q", lazy.function(toggle_microphone)),
     # System controls
@@ -675,6 +679,12 @@ widgets = [
     VolumeCtrl(
         padding=10,
         foreground=colors["primary"],
+        mouse_callbacks={
+            "Button1": lazy.widget["volumectrl"].adjust_volume("mute"),
+            "Button3": lazy.widget["volumectrl"].toggle_text(),
+            "Button4": lazy.widget["volumectrl"].adjust_volume("increase"),
+            "Button5": lazy.widget["volumectrl"].adjust_volume("decrease"),
+        },
     ),
     widget.Clock(
         foreground=colors["text"],
