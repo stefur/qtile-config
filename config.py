@@ -14,12 +14,11 @@ from libqtile.config import (
     Drag,
     Click,
     Match,
-    KeyChord,
     ScratchPad,
     DropDown,
 )
 from libqtile.lazy import lazy
-from libqtile import bar, widget, hook, qtile
+from libqtile import hook, qtile
 from libqtile.backend.wayland import InputConfig
 
 from libqtile.layout.max import Max
@@ -30,10 +29,6 @@ from libqtile.layout.floating import Floating
 from libqtile.backend.base import Window
 from libqtile.group import _Group
 
-from battery import CustomBattery
-from spotify import Spotify
-from volume import VolumeCtrl
-from wifi import Wifi
 from colors import colors
 
 if TYPE_CHECKING:
@@ -44,15 +39,6 @@ assert qtile is not None, "This should never be None."
 
 MOD = "mod4"
 ALT = "mod1"
-
-network_interfaces: list[str] = os.listdir("/sys/class/net")
-wifi_prefix: tuple[str, ...] = ("wlp", "wlan")
-
-for interface in network_interfaces:
-    if interface.startswith(wifi_prefix):
-        WIFI_INTERFACE = interface
-        break
-
 TERMINAL = "foot"
 BROWSER = "firefox"
 LAUNCHER = "fuzzel.sh"
@@ -61,8 +47,6 @@ MUSIC_CTRL = """dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify
  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."""
 
 font_setting: tuple[str, int] = ("FiraMono Nerd Font", 13)
-
-HAS_BATTERY: bool = os.path.isdir("/sys/class/power_supply/BAT0")
 
 group_assignments: dict[str, Any[str, ...]] = {
     "1": (BROWSER),
@@ -89,11 +73,56 @@ wl_input_rules = {
 }
 
 
+@hook.subscribe.focus_change
+@hook.subscribe.client_killed
+@hook.subscribe.client_managed
+def update_waybar(*_args) -> None:
+    """Update Waybar of open groups and windows"""
+    existing_groups = dict.fromkeys(qtile.groups_map.keys(), "empty")
+
+    existing_groups.pop("scratchpad", None)
+
+    current_group: str = qtile.current_screen.group.label
+
+    for window in qtile.windows():
+        if (
+            window["wm_class"] is not None
+            and window["group"] is not None
+            and window["group"] in existing_groups
+        ):
+            existing_groups[window["group"]] = "occupied"
+
+    existing_groups[current_group] = "focused"
+
+    text: str = ""
+
+    for group, status in existing_groups.items():
+        match status:
+            case "occupied":
+                text += f"""<span fgcolor='#B6AFC9'> {group} </span>"""
+            case "empty":
+                text += f"""<span fgcolor='#54546D'> {group} </span>"""
+            case "focused":
+                text += f"""<span fgcolor='#1d1d16' bgcolor='#B6AFC9' line_height='2'> {group} </span>"""
+
+    output = open("/tmp/qtile-groups.txt", "w", encoding="utf-8")
+    output.write(text)
+    output.close()
+
+    subprocess.call(["pkill -RTMIN+8 waybar"], shell=True)
+
+
 @hook.subscribe.startup_once
 def autostart() -> None:
-    """Autostart things from script when qtile starts"""
+    """Autostart things from when qtile starts"""
     with subprocess.Popen("autostart.sh", shell=True) as process:
         hook.subscribe.shutdown(process.terminate)
+
+    home = os.path.expandvars("$HOME")
+    with subprocess.Popen(
+        f"waybar -c {home}/.config/waybar/config-qtile &", shell=True
+    ) as waybar:
+        hook.subscribe.shutdown(waybar.terminate)
 
 
 @hook.subscribe.client_urgent_hint_changed
@@ -252,13 +281,6 @@ def toggle_layout(self: Qtile, layout_name: str) -> None:
     self.current_group.layout.show(screen_rect)
 
 
-def toggle_widget_info(self: Qtile) -> None:
-    """Toggle all widgets text info"""
-    for wdgt in self.widgets_map:
-        if hasattr(self.widgets_map[wdgt], "show_text"):
-            self.widgets_map[wdgt].toggle_text()  # type: ignore
-
-
 def next_window(self: Qtile) -> None:
     """If treetab or max layout, cycle next window"""
     if self.current_layout.name in (layout_names["max"], layout_names["treetab"]):
@@ -358,25 +380,42 @@ keys = [
     Key([MOD], "Left", lazy.layout.left().when(layout=layout_names["monadtall"])),
     Key([MOD], "Right", lazy.layout.right().when(layout=layout_names["monadtall"])),
     # Move windows between left/right columns or move up/down in current stack
-    Key([MOD, "shift"], "Left", lazy.layout.swap_left().when(layout=layout_names["monadtall"])),
     Key(
-        [MOD, "shift"], "Right", lazy.layout.swap_right().when(layout=layout_names["monadtall"])
+        [MOD, "shift"],
+        "Left",
+        lazy.layout.swap_left().when(layout=layout_names["monadtall"]),
     ),
-    Key([MOD, "shift"], "Down",
+    Key(
+        [MOD, "shift"],
+        "Right",
+        lazy.layout.swap_right().when(layout=layout_names["monadtall"]),
+    ),
+    Key(
+        [MOD, "shift"],
+        "Down",
         lazy.layout.shuffle_down().when(layout=layout_names["monadtall"]),
-        lazy.layout.move_down().when(layout=layout_names["treetab"])
+        lazy.layout.move_down().when(layout=layout_names["treetab"]),
     ),
     Key(
-        [MOD, "shift"], "Up",
+        [MOD, "shift"],
+        "Up",
         lazy.layout.shuffle_up().when(layout=layout_names["monadtall"]),
-        lazy.layout.move_up().when(layout=layout_names["treetab"])
+        lazy.layout.move_up().when(layout=layout_names["treetab"]),
     ),
     # Grow/shrink windows
-    Key([MOD, ALT], "Left", lazy.layout.shrink_main().when(layout=layout_names["monadtall"])
+    Key(
+        [MOD, ALT],
+        "Left",
+        lazy.layout.shrink_main().when(layout=layout_names["monadtall"]),
     ),
-    Key([MOD, ALT], "Right", lazy.layout.grow_main().when(layout=layout_names["monadtall"])
+    Key(
+        [MOD, ALT],
+        "Right",
+        lazy.layout.grow_main().when(layout=layout_names["monadtall"]),
     ),
-    Key([MOD, ALT], "Down", lazy.layout.shrink().when(layout=layout_names["monadtall"])),
+    Key(
+        [MOD, ALT], "Down", lazy.layout.shrink().when(layout=layout_names["monadtall"])
+    ),
     Key([MOD, ALT], "Up", lazy.layout.grow().when(layout=layout_names["monadtall"])),
     # Move focus/windows between screens
     Key([MOD], "Tab", lazy.screen.toggle_group()),
@@ -417,16 +456,6 @@ keys = [
     Key([MOD, "control"], "m", lazy.spawn("mount.sh")),
     Key([MOD], "e", lazy.spawn("emojis.sh")),
     Key([MOD, "shift"], "p", lazy.spawn("screenshot.sh")),
-    # KeyChords for some special actions
-    KeyChord(
-        [MOD],
-        "k",
-        [
-            Key("c", lazy.spawn(f"{TERMINAL} -e connmanctl")),
-            Key("u", lazy.spawn(f"{TERMINAL} -e yay -Syu")),
-            Key("b", lazy.spawn(f"{TERMINAL} -e bluetoothctl"))
-        ],
-    ),
     # ScratchPads
     Key([MOD, "shift"], "Return", lazy.group["scratchpad"].dropdown_toggle("terminal")),
     Key([MOD], "n", lazy.group["scratchpad"].dropdown_toggle("newsboat")),
@@ -437,7 +466,9 @@ keys = [
     Key([MOD], "7", lazy.spawn(f"{MUSIC_CTRL}Previous")),
     # Media volume keys
     Key([], "XF86AudioMute", lazy.widget["volumectrl"].adjust_volume("mute")),
-    Key([MOD, "shift"], "m", lazy.widget["volumectrl"].adjust_volume("mute")),  # Extra keybind
+    Key(
+        [MOD, "shift"], "m", lazy.widget["volumectrl"].adjust_volume("mute")
+    ),  # Extra keybind
     Key(
         [], "XF86AudioLowerVolume", lazy.widget["volumectrl"].adjust_volume("decrease")
     ),
@@ -514,110 +545,8 @@ mouse = [
     Click([MOD], "Button2", lazy.window.toggle_floating()),
 ]
 
-# Widgets & extension defaults
-widget_defaults = {
-    "font": font_setting[0],
-    "fontsize": font_setting[1],
-    "background": colors["background"],
-    "foreground": colors["text"],
-}
-
-extension_defaults = widget_defaults.copy()
-
-# Widgets
-widgets = [
-    widget.GroupBox(
-        margin_x=0,
-        hide_unused=False,
-        disable_drag=True,
-        use_mouse_wheel=False,
-        padding=6,
-        borderwidth=4,
-        active=colors["primary"],
-        inactive=colors["secondary"],
-        rounded=True,
-        highlight_color=colors["background"],
-        block_highlight_text_color=colors["background"],
-        highlight_method="block",
-        this_current_screen_border=colors["primary"],
-        this_screen_border=colors["primary"],
-        foreground=colors["text"],
-        urgent_alert_method="text",
-        urgent_text=colors["urgent"],
-        mouse_callbacks={"Button3": lazy.clear_urgent("click")},
-    ),
-    widget.CurrentLayout(
-        padding=8,
-        foreground=colors["primary"],
-        mouse_callbacks={
-            "Button3": lazy.next_window(),
-        },
-    ),
-    widget.WindowCount(
-        padding=-12,
-        foreground=colors["background"],
-        text_format="[{num}]",
-        mouse_callbacks={
-            "Button3": lazy.next_window(),
-        },
-    ),
-    widget.WindowName(
-        max_chars=50,
-        empty_group_string="Desktop",
-        mouse_callbacks={
-            "Button3": lazy.next_window(),
-        },
-    ),
-    Spotify(
-        mouse_callbacks={
-            "Button1": lazy.spawn(f"{MUSIC_CTRL}PlayPause"),
-            "Button3": lazy.spawn_or_focus("spotify"),
-        }
-    ),
-    widget.StatusNotifier(padding=10, background=colors["background"]),
-    widget.Sep(padding=8, foreground=colors["background"]),
-    Wifi(
-        foreground=colors["primary"],
-        mouse_callbacks={"Button1": lazy.notification("wifi")},
-        padding=10,
-    ),
-    VolumeCtrl(
-        padding=10,
-        foreground=colors["primary"],
-        mouse_callbacks={
-            "Button1": lazy.widget["volumectrl"].adjust_volume("mute"),
-            "Button3": lazy.widget["volumectrl"].toggle_text(),
-            "Button4": lazy.widget["volumectrl"].adjust_volume("increase"),
-            "Button5": lazy.widget["volumectrl"].adjust_volume("decrease"),
-        },
-    ),
-    widget.Clock(
-        foreground=colors["text"],
-        format="%H:%M",
-        padding=10,
-        mouse_callbacks={
-            "Button1": lazy.notification("date"),
-            "Button3": lazy.spawn("python -m webbrowser https://kalender.se"),
-        },
-    ),
-]
-
-# Check if this is my laptop, and add some widgets if it is
-if HAS_BATTERY:
-    widgets.insert(
-        -3,
-        CustomBattery(
-            padding=10,
-            foreground=colors["primary"],
-            mouse_callbacks={
-                "Button1": lazy.notification("battery"),
-                "Button3": lazy.widget["custombattery"].toggle_text(),
-            },
-        ),
-    )
-
 # Screen and bar
-screens = [Screen(top=bar.Bar(widgets=widgets, size=34))]
+screens = [Screen()]
 
 # Misc
 dgroups_key_binder = None
