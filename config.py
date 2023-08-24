@@ -5,10 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 
-from datetime import datetime
 from typing import TYPE_CHECKING
-import iwlib  # type: ignore
-import psutil  # type: ignore
 
 from libqtile.config import (
     Key,
@@ -17,7 +14,6 @@ from libqtile.config import (
     Drag,
     Click,
     Match,
-    EzKey,
     KeyChord,
     ScratchPad,
     DropDown,
@@ -25,8 +21,6 @@ from libqtile.config import (
 from libqtile.lazy import lazy
 from libqtile import bar, widget, hook, qtile
 from libqtile.backend.wayland import InputConfig
-from libqtile.utils import send_notification
-from libqtile.log_utils import logger
 
 from libqtile.layout.max import Max
 from libqtile.layout.xmonad import MonadTall
@@ -49,13 +43,7 @@ if TYPE_CHECKING:
 assert qtile is not None, "This should never be None."
 
 MOD = "mod4"
-
-modifier_keys: dict[str, str] = {
-    "M": "mod4",
-    "A": "mod1",
-    "C": "control",
-    "S": "shift",
-}
+ALT = "mod1"
 
 network_interfaces: list[str] = os.listdir("/sys/class/net")
 wifi_prefix: tuple[str, ...] = ("wlp", "wlan")
@@ -120,6 +108,7 @@ def follow_url(client: Window) -> None:
                 qtile.current_screen.set_group(client.group)
                 client.group.focus(client)
                 return
+
 
 @hook.subscribe.float_change
 def center_window() -> None:
@@ -249,87 +238,6 @@ def float_to_front(self: Qtile) -> None:
             window.bring_to_front()
 
 
-def clear_urgent(self: Qtile, trigger: str) -> None:
-    """Clear the urgent flags for windows in a group"""
-    groupbox: widget.groupbox.GroupBox | None = self.widgets_map.get("groupbox")
-    if groupbox is None:
-        return
-
-    if trigger == "click":
-        assert groupbox.get_clicked_group is not None
-        group = groupbox.get_clicked_group()
-        for window in group.windows:
-            if window.urgent:
-                window.urgent = False
-    elif trigger == "keybind":
-        all_groups = self.groups
-        for group in all_groups:
-            for window in group.windows:
-                if window.urgent:
-                    window.urgent = False
-
-    groupbox.draw()
-
-
-def notification(_self: Qtile, request: str) -> None:
-    """Used for mouse callbacks and keybinds to send notifications"""
-    title: str = ""
-    message: str = ""
-
-    if request == "wifi":
-        try:
-            iface = iwlib.get_iwconfig(WIFI_INTERFACE)
-            quality = iface["stats"]["quality"]
-            quality = round((quality / 70) * 100)
-            ssid = str(iface["ESSID"], encoding="utf-8")
-            title = "Wifi"
-            message = f"{ssid}\nSignal strength: {quality}%"
-        except KeyError:
-            title = "Disconnected"
-            message = ""
-
-    elif request == "date":
-        today = datetime.today()
-        todaysdate = today.strftime("%-d %B")
-        weekday = today.strftime("%A")
-        week = datetime.today().isocalendar()[1]
-        title = f"{todaysdate} ({weekday})"
-        message = f"Week {week}"
-
-    elif request == "battery":
-        if HAS_BATTERY:
-            battery = psutil.sensors_battery()
-            assert battery is not None, "Battery must be found by psutil"
-            title = "Battery"
-            message = f"{round(battery.percent)}%"
-        else:
-            return
-
-    send_notification(title, message, timeout=2500, urgent=False)
-
-
-def toggle_microphone(_self: Qtile) -> None:
-    """Run the toggle command and then send notification to report status of microphone"""
-    try:
-        subprocess.call(["pactl set-source-mute 0 toggle"], shell=True)
-
-        message = subprocess.check_output(
-            ["pactl get-source-mute 0"], shell=True
-        ).decode("utf-8")
-
-        if "yes" in message:
-            message = "Muted"
-
-        elif "no" in message:
-            message = "Unmuted"
-
-        title = "Microphone"
-        send_notification(title, message, timeout=2500, urgent=False)
-
-    except subprocess.CalledProcessError as err:
-        logger.warning("Failed to mute microphone: %s", err)
-
-
 def toggle_layout(self: Qtile, layout_name: str) -> None:
     """Takes a layout name and tries to set it, or if it's already active back to monadtall"""
     assert (
@@ -445,110 +353,107 @@ floating_layout = Floating(
 # Keybinds
 keys = [
     # Switch focus between windows
-    EzKey("M-<Down>", lazy.layout.down()),
-    EzKey("M-<Up>", lazy.layout.up()),
-    EzKey("M-<Left>", lazy.layout.left().when(layout=layout_names["monadtall"])),
-    EzKey("M-<Right>", lazy.layout.right().when(layout=layout_names["monadtall"])),
+    Key([MOD], "Down", lazy.layout.down()),
+    Key([MOD], "Up", lazy.layout.up()),
+    Key([MOD], "Left", lazy.layout.left().when(layout=layout_names["monadtall"])),
+    Key([MOD], "Right", lazy.layout.right().when(layout=layout_names["monadtall"])),
     # Move windows between left/right columns or move up/down in current stack
-    EzKey("M-S-<Left>", lazy.layout.swap_left().when(layout=layout_names["monadtall"])),
-    EzKey(
-        "M-S-<Right>", lazy.layout.swap_right().when(layout=layout_names["monadtall"])
+    Key([MOD, "shift"], "Left", lazy.layout.swap_left().when(layout=layout_names["monadtall"])),
+    Key(
+        [MOD, "shift"], "Right", lazy.layout.swap_right().when(layout=layout_names["monadtall"])
     ),
-    EzKey(
-        "M-S-<Down>",
+    Key([MOD, "shift"], "Down",
         lazy.layout.shuffle_down().when(layout=layout_names["monadtall"]),
-        lazy.layout.move_down().when(layout=layout_names["treetab"]),
+        lazy.layout.move_down().when(layout=layout_names["treetab"])
     ),
-    EzKey(
-        "M-S-<Up>",
+    Key(
+        [MOD, "shift"], "Up",
         lazy.layout.shuffle_up().when(layout=layout_names["monadtall"]),
-        lazy.layout.move_up().when(layout=layout_names["treetab"]),
+        lazy.layout.move_up().when(layout=layout_names["treetab"])
     ),
     # Grow/shrink windows
-    EzKey(
-        "M-A-<Left>", lazy.layout.shrink_main().when(layout=layout_names["monadtall"])
+    Key([MOD, ALT], "Left", lazy.layout.shrink_main().when(layout=layout_names["monadtall"])
     ),
-    EzKey(
-        "M-A-<Right>", lazy.layout.grow_main().when(layout=layout_names["monadtall"])
+    Key([MOD, ALT], "Right", lazy.layout.grow_main().when(layout=layout_names["monadtall"])
     ),
-    EzKey("M-A-<Down>", lazy.layout.shrink().when(layout=layout_names["monadtall"])),
-    EzKey("M-A-<Up>", lazy.layout.grow().when(layout=layout_names["monadtall"])),
+    Key([MOD, ALT], "Down", lazy.layout.shrink().when(layout=layout_names["monadtall"])),
+    Key([MOD, ALT], "Up", lazy.layout.grow().when(layout=layout_names["monadtall"])),
     # Move focus/windows between screens
-    EzKey("M-<Tab>", lazy.screen.toggle_group()),
-    EzKey("M-<period>", lazy.next_screen()),
-    EzKey("M-<comma>", lazy.prev_screen()),
-    EzKey("M-S-<period>", lazy.function(window_to_screen, "next")),
-    EzKey("M-S-<comma>", lazy.function(window_to_screen, "previous")),
-    EzKey("M-C-<Right>", lazy.function(focus_group, "next")),
-    EzKey("M-C-<Left>", lazy.function(focus_group, "previous")),
+    Key([MOD], "Tab", lazy.screen.toggle_group()),
+    Key([MOD], "period", lazy.next_screen()),
+    Key([MOD], "comma", lazy.prev_screen()),
+    Key([MOD, "shift"], "period", lazy.function(window_to_screen, "next")),
+    Key([MOD, "shift"], "comma", lazy.function(window_to_screen, "previous")),
+    Key([MOD, "control"], "Right", lazy.function(focus_group, "next")),
+    Key([MOD, "control"], "Left", lazy.function(focus_group, "previous")),
     # Various window controls
-    EzKey("M-S-c", lazy.window.kill()),
-    EzKey("M-C-c", lazy.window.center()),
-    EzKey("M-S-<space>", lazy.layout.reset()),
-    EzKey("M-f", lazy.window.toggle_fullscreen()),
-    EzKey("M-S-f", lazy.window.toggle_floating()),
-    EzKey("M-<space>", lazy.layout.flip()),
-    EzKey("M-S-<Tab>", lazy.function(float_to_front)),
-    EzKey("M-b", lazy.hide_show_bar()),
-    EzKey("M-u", lazy.clear_urgent("keybind")),
-    EzKey("M-i", lazy.toggle_widget_info()),
+    Key([MOD, "shift"], "c", lazy.window.kill()),
+    Key([MOD, "control"], "c", lazy.window.center()),
+    Key([MOD, "shift"], "space", lazy.layout.reset()),
+    Key([MOD], "f", lazy.window.toggle_fullscreen()),
+    Key([MOD, "shift"], "f", lazy.window.toggle_floating()),
+    Key([MOD], "space", lazy.layout.flip()),
+    Key([MOD, "shift"], "Tab", lazy.function(float_to_front)),
+    Key([MOD], "b", lazy.hide_show_bar()),
+    Key([MOD], "u", lazy.clear_urgent("keybind")),
+    Key([MOD], "i", lazy.toggle_widget_info()),
     # Layout toggles
-    EzKey("M-m", lazy.function(toggle_layout, layout_names["max"])),
-    EzKey("M-t", lazy.function(toggle_layout, layout_names["treetab"])),
+    Key([MOD], "m", lazy.function(toggle_layout, layout_names["max"])),
+    Key([MOD], "t", lazy.function(toggle_layout, layout_names["treetab"])),
     # Notification commands
-    EzKey("M-S-b", lazy.function(notification, "battery")),
-    EzKey("M-S-d", lazy.function(notification, "date")),
-    EzKey("M-S-w", lazy.function(notification, "wifi")),
+    Key([MOD, "shift"], "b", lazy.spawn("callbacks.sh battery")),
+    Key([MOD, "shift"], "d", lazy.spawn("callbacks.sh date")),
+    Key([MOD, "shift"], "w", lazy.spawn("callbacks.sh wifi")),
     # Some app shortcuts
-    EzKey("M-w", lazy.function(spawn_or_focus, BROWSER)),
-    EzKey("M-<Return>", lazy.spawn(TERMINAL)),
-    EzKey("M-C-<Return>", lazy.spawn(FILE_MANAGER)),
-    EzKey("M-c", lazy.function(spawn_or_focus, "signal-desktop")),
-    EzKey("M-r", lazy.spawn(LAUNCHER)),
-    EzKey("M-d", lazy.function(spawn_or_focus, "Discord")),
-    EzKey("M-s", lazy.function(spawn_or_focus, "spotify")),
-    EzKey("M-g", lazy.function(spawn_or_focus, "steam-native")),
-    EzKey("M-p", lazy.spawn("pass.sh")),
-    EzKey("M-C-m", lazy.spawn("mount.sh")),
-    EzKey("M-e", lazy.spawn("emojis.sh")),
-    EzKey("M-S-p", lazy.spawn("screenshot.sh")),
+    Key([MOD], "w", lazy.function(spawn_or_focus, BROWSER)),
+    Key([MOD], "Return", lazy.spawn(TERMINAL)),
+    Key([MOD, "control"], "Return", lazy.spawn(FILE_MANAGER)),
+    Key([MOD], "c", lazy.function(spawn_or_focus, "signal-desktop")),
+    Key([MOD], "r", lazy.spawn(LAUNCHER)),
+    Key([MOD], "d", lazy.function(spawn_or_focus, "Discord")),
+    Key([MOD], "s", lazy.function(spawn_or_focus, "spotify")),
+    Key([MOD], "g", lazy.function(spawn_or_focus, "steam-native")),
+    Key([MOD], "p", lazy.spawn("pass.sh")),
+    Key([MOD, "control"], "m", lazy.spawn("mount.sh")),
+    Key([MOD], "e", lazy.spawn("emojis.sh")),
+    Key([MOD, "shift"], "p", lazy.spawn("screenshot.sh")),
     # KeyChords for some special actions
     KeyChord(
         [MOD],
         "k",
         [
-            EzKey("c", lazy.spawn(f"{TERMINAL} -e connmanctl")),
-            EzKey("u", lazy.spawn(f"{TERMINAL} -e yay -Syu")),
-            EzKey("b", lazy.spawn(f"{TERMINAL} -e bluetoothctl")),
+            Key("c", lazy.spawn(f"{TERMINAL} -e connmanctl")),
+            Key("u", lazy.spawn(f"{TERMINAL} -e yay -Syu")),
+            Key("b", lazy.spawn(f"{TERMINAL} -e bluetoothctl"))
         ],
     ),
     # ScratchPads
-    EzKey("M-S-<Return>", lazy.group["scratchpad"].dropdown_toggle("terminal")),
-    EzKey("M-n", lazy.group["scratchpad"].dropdown_toggle("newsboat")),
-    EzKey("M-<Escape>", lazy.group["scratchpad"].hide_all()),
+    Key([MOD, "shift"], "Return", lazy.group["scratchpad"].dropdown_toggle("terminal")),
+    Key([MOD], "n", lazy.group["scratchpad"].dropdown_toggle("newsboat")),
+    Key([MOD], "Escape", lazy.group["scratchpad"].hide_all()),
     # Spotify controls, lacking real media keys on 65% keyboard
-    EzKey("M-8", lazy.spawn(f"{MUSIC_CTRL}PlayPause")),
-    EzKey("M-9", lazy.spawn(f"{MUSIC_CTRL}Next")),
-    EzKey("M-7", lazy.spawn(f"{MUSIC_CTRL}Previous")),
+    Key([MOD], "8", lazy.spawn(f"{MUSIC_CTRL}PlayPause")),
+    Key([MOD], "9", lazy.spawn(f"{MUSIC_CTRL}Next")),
+    Key([MOD], "7", lazy.spawn(f"{MUSIC_CTRL}Previous")),
     # Media volume keys
-    EzKey("<XF86AudioMute>", lazy.widget["volumectrl"].adjust_volume("mute")),
-    EzKey("M-S-m", lazy.widget["volumectrl"].adjust_volume("mute")),  # Extra keybind
-    EzKey(
-        "<XF86AudioLowerVolume>", lazy.widget["volumectrl"].adjust_volume("decrease")
+    Key([], "XF86AudioMute", lazy.widget["volumectrl"].adjust_volume("mute")),
+    Key([MOD, "shift"], "m", lazy.widget["volumectrl"].adjust_volume("mute")),  # Extra keybind
+    Key(
+        [], "XF86AudioLowerVolume", lazy.widget["volumectrl"].adjust_volume("decrease")
     ),
-    EzKey(
-        "<XF86AudioRaiseVolume>", lazy.widget["volumectrl"].adjust_volume("increase")
+    Key(
+        [], "XF86AudioRaiseVolume", lazy.widget["volumectrl"].adjust_volume("increase")
     ),
     # Brightness controll
-    EzKey("<XF86MonBrightnessDown>", lazy.spawn("brightnessctl set 5%-")),
-    EzKey("<XF86MonBrightnessUp>", lazy.spawn("brightnessctl set +5%")),
+    Key([], "XF86MonBrightnessDown", lazy.spawn("brightnessctl set 5%-")),
+    Key([], "XF86MonBrightnessUp", lazy.spawn("brightnessctl set +5%")),
     # Microphone toggle muted/unmuted
-    EzKey("M-q", lazy.function(toggle_microphone)),
+    Key([MOD], "q", lazy.spawn("callbacks.sh mic")),
     # System controls
-    EzKey("M-l", lazy.spawn("lock.sh")),
-    EzKey("M-S-r", lazy.reload_config()),
-    EzKey("M-C-r", lazy.restart()),
-    EzKey("M-S-q", lazy.shutdown()),
+    Key([MOD], "l", lazy.spawn("lock.sh")),
+    Key([MOD, "shift"], "r", lazy.reload_config()),
+    Key([MOD, "control"], "r", lazy.restart()),
+    Key([MOD, "shift"], "q", lazy.shutdown()),
 ]
 
 # Groups

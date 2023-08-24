@@ -19,9 +19,9 @@ if TYPE_CHECKING:
     from dbus_next.introspection import Node
 
 
-CONNMAN_SERVICE = "net.connman"
-CONNMAN_INTERFACE = "net.connman.Manager"
-CONNMAN_PATH = "/"
+CONNMAN_SERVICE = "net.connman.iwd"
+CONNMAN_INTERFACE = "org.freedesktop.DBus.Properties"
+CONNMAN_PATH = "/net/connman/iwd"
 CONNMAN_BUS = BusType.SYSTEM
 
 
@@ -70,7 +70,7 @@ class Wifi(widget.TextBox):
 
     async def update_wifi_info(self) -> None:
         """Update the info in the widget"""
-        wifi_info: List[List[Dict[str, Variant]]] = await self.connman.call_get_services()  # type: ignore
+        wifi_info: list[list[dict[str, Variant]]] = await self.connman.call_get_services()  # type: ignore
         if not wifi_info:
             status = None
         else:

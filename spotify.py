@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import asyncio
 
 from dbus_next.message import Message
+from dbus_next.errors import DBusError
 from dbus_next.aio.message_bus import MessageBus
 from dbus_next.constants import BusType, MessageType
 
@@ -110,10 +111,9 @@ class Spotify(widget.TextBox):
                 body=["org.mpris.MediaPlayer2.spotify"],
             )
         )
-        assert reply is not None, "This should not be None"
 
         if reply.message_type == MessageType.ERROR:
-            raise Exception(reply.body[0])
+            raise DBusError
 
         return reply.body[0]
 
@@ -134,7 +134,7 @@ class Spotify(widget.TextBox):
         assert reply is not None, "This should not be None"
 
         if reply.message_type == MessageType.ERROR:
-            raise Exception(reply.body[0])
+            raise DBusError
 
         return reply
 

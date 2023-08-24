@@ -9,6 +9,8 @@ from dbus_next.aio.message_bus import MessageBus
 from dbus_next.constants import BusType
 
 from libqtile import widget
+from libqtile.command.base import expose_command
+
 
 from colors import colors
 
@@ -28,17 +30,17 @@ UPOWER_DEVICE = UPOWER_INTERFACE + ".Device"
 UPOWER_BUS = BusType.SYSTEM
 
 battery_level_icons: dict[str, int] = {
-    "\uf578": 95,
-    "\uf581": 90,
-    "\uf580": 80,
-    "\uf57f": 70,
-    "\uf57e": 60,
-    "\uf57d": 50,
-    "\uf57c": 40,
-    "\uf57b": 30,
-    "\uf57a": 20,
-    "\uf579": 10,
-    "\uf58d": 0,
+    "󰁹": 95,
+    "󰂂": 90,
+    "󰂁": 80,
+    "󰂀": 70,
+    "󰁿": 60,
+    "󰁾": 50,
+    "󰁽": 40,
+    "󰁼": 30,
+    "󰁻": 20,
+    "󰁺": 10,
+    "󰂎": 0,
 }
 
 
@@ -111,6 +113,7 @@ class CustomBattery(widget.TextBox):
         del interface, changed, invalidated
         asyncio.create_task(self._update_battery_info())
 
+    @expose_command()
     def toggle_text(self) -> None:
         """Show or hide the percentage next to the icon"""
         if self.show_text:

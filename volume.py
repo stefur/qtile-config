@@ -16,68 +16,68 @@ class VolumeCtrl(widget.TextBox):
     def __init__(self, **config):
         widget.TextBox.__init__(self, **config)
 
-        self.add_callbacks(
-            {
-                "Button1": self.mute,
-                "Button3": self.toggle_text,
-                "Button4": self.increase_vol,
-                "Button5": self.decrease_vol,
-            }
-        )
-
         self.show_text: bool = False
         self.find_value = re.compile(r"(\d?\d?\d?)%")
-        self.volume: int | None = self.get_vol()
+        self.volume, self.icon = self.get_volume()
 
-    def get_vol(self) -> int | None:
+        self.update_widget()
+
+    def get_volume(self) -> tuple[int, str]:
         """Get the volume value"""
 
         try:
-            output = subprocess.check_output(
+            cmd_output = subprocess.check_output(
                 ["pactl get-sink-volume 0"], shell=True
             ).decode("utf-8")
             mute = subprocess.check_output(
                 ["pactl get-sink-mute 0"], shell=True
             ).decode("utf-8")
-            vol = int(self.find_value.search(output).groups()[0])  # type: ignore
-            icon = next(iter({k: v for k, v in volume_level_icons.items() if vol >= v}))
 
-            if re.search("yes", mute):
-                icon = "󰸈"
+            volume = int(self.find_value.search(cmd_output).groups()[0])  # type: ignore
 
-            if self.show_text:
-                self.text = f"{icon} <span foreground='{colors['text']}'>{vol}%</span>"
-            else:
-                self.text = f"{icon}"
+        except subprocess.CalledProcessError:
+            volume = 0
+            mute = "no"
 
+        icon = next(iter({k: v for k, v in volume_level_icons.items() if volume >= v}))
+
+        if re.search("yes", mute):
+            icon = "󰸈"
+        return volume, icon
+
+    def update_widget(self) -> None:
+        """Update the widget"""
+        if self.show_text:
+            self.text = f"{self.icon} <span foreground='{colors['text']}'>{self.volume}%</span>"
+        else:
+            self.text = f"{self.icon}"
+
+        #FIXME: very unclear why this try statement is neeeded upon init.
+        try:
             self.bar.draw()
-
-            return vol
         except AttributeError:
             return None
 
     @expose_command()
-    def increase_vol(self) -> None:
-        """Increase the volume and refresh volume and icon"""
+    def adjust_volume(self, option: str) -> None:
+        """Adjust the volume and refresh volume and icon"""
 
-        if self.volume is not None and self.volume < 100:
-            subprocess.call(["pactl set-sink-volume 0 +5%"], shell=True)
-            self.volume = self.get_vol()
+        match option:
+            case "increase":
+                if self.volume is not None and self.volume < 100:
+                    subprocess.call(["pactl set-sink-volume 0 +5%"], shell=True)
+
+            case "decrease":
+                subprocess.call(["pactl set-sink-volume 0 -5%"], shell=True)
+
+            case "mute":
+                subprocess.call(["pactl set-sink-mute 0 toggle"], shell=True)
+
+        self.volume, self.icon = self.get_volume()
+        self.update_widget()
+
 
     @expose_command()
-    def decrease_vol(self) -> None:
-        """Decrease the volume and refresh volume and icon"""
-
-        subprocess.call(["pactl set-sink-volume 0 -5%"], shell=True)
-        self.volume = self.get_vol()
-
-    @expose_command()
-    def mute(self) -> None:
-        """Toggle to mute/unmute volume and refresh icon"""
-
-        subprocess.call(["pactl set-sink-mute 0 toggle"], shell=True)
-        self.volume = self.get_vol()
-
     def toggle_text(self) -> None:
         """Show or hide the percentage next to the icon"""
         if self.show_text:
@@ -85,4 +85,4 @@ class VolumeCtrl(widget.TextBox):
         else:
             self.show_text = True
 
-        self.volume = self.get_vol()
+        self.update_widget()
