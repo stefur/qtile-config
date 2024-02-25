@@ -113,53 +113,70 @@ class GroupState(Enum):
 @hook.subscribe.focus_change
 @hook.subscribe.client_killed
 @hook.subscribe.client_managed
-def update_waybar(*_args) -> None:
+def update_groups_waybar(*_args) -> None:
     """Update Waybar of open groups and windows"""
-    existing_groups = dict.fromkeys(qtile.groups_map.keys(), "empty")
+    existing_groups = dict.fromkeys(qtile.groups_map.keys(), GroupState.EMPTY)  # type: ignore[attr-defined]
 
     existing_groups.pop("scratchpad", None)
 
-    current_group: str = qtile.current_screen.group.label
+    current_group: str = qtile.current_screen.group.label  # type: ignore[attr-defined]
 
-    for window in qtile.windows():
+    for window in qtile.windows():  # type: ignore[attr-defined]
         if (
             window["wm_class"] is not None
             and window["group"] is not None
             and window["group"] in existing_groups
         ):
-            existing_groups[window["group"]] = "occupied"
+            existing_groups[window["group"]] = GroupState.OCCUPIED
 
-    existing_groups[current_group] = "focused"
+    existing_groups[current_group] = GroupState.FOCUSED
 
     text: str = ""
 
     for group, status in existing_groups.items():
         match status:
-            case "occupied":
-                text += f"""<span fgcolor='#B6AFC9'> {group} </span>"""
-            case "empty":
-                text += f"""<span fgcolor='#54546D'> {group} </span>"""
-            case "focused":
-                text += f"""<span fgcolor='#1d1d16' bgcolor='#B6AFC9' line_height='2'> {group} </span>"""
+            case GroupState.OCCUPIED:
+                text += f"""<span fgcolor='{colors["primary"]}'> {group} </span>"""
+            case GroupState.EMPTY:
+                text += f"""<span fgcolor='{colors["secondary"]}'> {group} </span>"""
+            case GroupState.FOCUSED:
+                text += f"""<span fgcolor='{colors["background"]}' bgcolor='{colors["primary"]}' line_height='2'> {group} </span>"""
 
-    output = open("/tmp/qtile-groups.txt", "w", encoding="utf-8")
-    output.write(text)
-    output.close()
+    with open("/tmp/qtile-groups.txt", "w", encoding="utf-8") as output:
+        output.write(text)
+        output.close()
 
     subprocess.call(["pkill -RTMIN+8 waybar"], shell=True)
 
 
-@hook.subscribe.startup_once
-def autostart() -> None:
-    """Autostart things from when qtile starts"""
-    with subprocess.Popen("autostart.sh", shell=True) as process:
-        hook.subscribe.shutdown(process.terminate)
+@hook.subscribe.focus_change
+def update_window_title_waybar() -> None:
+    """Update Waybar of focused window title"""
+    window_title: str = (
+        "" if qtile.current_window is None else qtile.current_window.name  # type: ignore[attr-defined]
+    )
 
-    home = os.path.expandvars("$HOME")
-    with subprocess.Popen(
-        f"waybar -c {home}/.config/waybar/config-qtile &", shell=True
-    ) as waybar:
-        hook.subscribe.shutdown(waybar.terminate)
+    with open("/tmp/qtile-window-title.txt", "w", encoding="utf-8") as output:
+        output.write(f"<span fgcolor='{colors["text"]}'>{window_title}</span>")
+        output.close()
+
+    subprocess.call(["pkill -RTMIN+9 waybar"], shell=True)
+
+
+@hook.subscribe.startup_complete
+@hook.subscribe.layout_change
+def update_layout_waybar(*_args) -> None:
+    """Update Waybar of current layout"""
+    try:
+        current_layout = qtile.current_layout.name  # type: ignore[attr-defined]
+    except AttributeError:
+        current_layout = ""
+
+    with open("/tmp/qtile-layout.txt", "w", encoding="utf-8") as output:
+        output.write(f"<span fgcolor='{colors["primary"]}'>{current_layout}</span>")
+        output.close()
+
+    subprocess.call(["pkill -RTMIN+7 waybar"], shell=True)
 
 
 @hook.subscribe.client_urgent_hint_changed
