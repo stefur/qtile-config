@@ -185,12 +185,13 @@ def follow_url(client: Window) -> None:
 
     wm_class: list | None = client.get_wm_class()
 
-    for item in wm_class:
-        match item:
-            case item if item.lower() in BROWSER and client.group is not None:
-                qtile.current_screen.set_group(client.group)
-                client.group.focus(client)
-                return
+    if wm_class is not None:
+        for item in wm_class:
+            match item:
+                case item if item.lower() in BROWSER and client.group is not None:
+                    qtile.current_screen.set_group(client.group)  # type: ignore[attr-defined]
+                    client.group.focus(client)
+                    return
 
 
 @hook.subscribe.float_change
@@ -198,8 +199,8 @@ def center_window() -> None:
     """Centers all the floating windows"""
 
     try:
-        if qtile.current_window is not None:
-            qtile.current_window.center()
+        if qtile.current_window is not None:  # type: ignore[attr-defined]
+            qtile.current_window.center()  # type: ignore[attr-defined]
     except AttributeError:
         return
 
@@ -210,7 +211,7 @@ def max_win_count(new_layout: MonadTall | Max | TreeTab, group: _Group) -> None:
     del group  # Unused parameter
 
     try:
-        wincount_widget = qtile.widgets_map.get("windowcount")
+        wincount_widget = qtile.widgets_map.get("windowcount")  # type: ignore[attr-defined]
 
         if new_layout.name == layout_names["max"]:
             wincount_widget.foreground = colors["primary"]
@@ -246,7 +247,7 @@ def toggle_fullscreen_off(client: Window) -> None:
         return
 
     if group is None:
-        group = qtile.current_group
+        group = qtile.current_group  # type: ignore[attr-defined]
 
     for window in group.windows:
         if window.fullscreen:
@@ -260,7 +261,7 @@ def fallback_default_layout(client: Window) -> None:
     if (
         not isinstance(client, Window)
         or client.group is None
-        or client.group.screen != qtile.current_screen
+        or client.group.screen != qtile.current_screen  # type: ignore[attr-defined]
         or client.floating is True
     ):
         return
@@ -276,13 +277,13 @@ def fallback_default_layout(client: Window) -> None:
     group_name: str = client.group.name
     default_layout_index: int = 0
 
-    qtile.to_layout_index(default_layout_index, group_name)
+    qtile.to_layout_index(default_layout_index, group_name)  # type: ignore[attr-defined]
 
 
 @hook.subscribe.current_screen_change
 def warp_cursor() -> None:
     """Warp cursor to focused screen"""
-    qtile.warp_to_screen()
+    qtile.warp_to_screen()  # type: ignore[attr-defined]
 
 
 def spawn_or_focus(self: Qtile, app: str) -> None:
