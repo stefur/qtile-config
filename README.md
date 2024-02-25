@@ -1,6 +1,6 @@
 ## Qtile configuration
 This is my configuration for [Qtile](https://github.com/qtile/qtile). It's geared towards Wayland and used with Waybar.
-I've you're interested in xorg related stuff, check this [branch](https://github.com/stefur/qtile-config/tree/xorg).
+If you're interested in xorg related stuff, check this [branch](https://github.com/stefur/qtile-config/tree/xorg).
 
 ![](screenshot.jpg)
 
@@ -10,11 +10,11 @@ I've you're interested in xorg related stuff, check this [branch](https://github
 - [Simple layout toggle](#simple-layout-toggle)
 - [Fallback to default layout](#fallback-to-default-layout)
 - [Send group status to Waybar](#send-group-status-to-waybar)
+- [Send window title to Waybar](#send-window-title-to-waybar)
+- [Send current layout to Waybar](#send-current-layout-to-waybar)
 
 ### Spawn or focus application
 Also sometimes known as "*run or raise*" in other tiling window managers, such as Xmonad. The basic idea is to check if an application is already running before it's spawned. If it's running, focus the window.
-
-The by far easiest solution is to use an application like `wmctrl` in a script, but I decided to implement something that wouldn't depend on any 3rd party application.
 
 The method to spawn or focus is the following:
 
@@ -67,7 +67,7 @@ Another behavior that might be desirable is to bring the window to main pane if 
 +        else:
 +            self.current_group.focus(window)
 ```
-This does however assume that the MonadTall layout is being used. But with little modification it can easily be adapted and use for other layouts as well.
+This does however assume that the MonadTall layout is being used. But with little modification it can easily be adapted and used with other layouts as well.
 
 ### Focus browser if urgent  
 I don't like when applications take focus whenever they want, and for this reason the window activation is set to `urgent`. 
@@ -143,41 +143,117 @@ def fallback_default_layout(client: Window) -> None:
 
 ### Send group status to Waybar
 ```python
+class GroupState(Enum):
+    EMPTY = 1
+    OCCUPIED = 2
+    FOCUSED = 3
+
+
 @hook.subscribe.focus_change
 @hook.subscribe.client_killed
 @hook.subscribe.client_managed
 def update_waybar(*_args) -> None:
     """Update Waybar of open groups and windows"""
-    existing_groups = dict.fromkeys(qtile.groups_map.keys(), "empty")
+    existing_groups = dict.fromkeys(qtile.groups_map.keys(), GroupState.EMPTY)  # type: ignore[attr-defined]
 
     existing_groups.pop("scratchpad", None)
 
-    current_group: str = qtile.current_screen.group.label
+    current_group: str = qtile.current_screen.group.label  # type: ignore[attr-defined]
 
-    for window in qtile.windows():
+    for window in qtile.windows():  # type: ignore[attr-defined]
         if (
             window["wm_class"] is not None
             and window["group"] is not None
             and window["group"] in existing_groups
         ):
-            existing_groups[window["group"]] = "occupied"
+            existing_groups[window["group"]] = GroupState.OCCUPIED
 
-    existing_groups[current_group] = "focused"
+    existing_groups[current_group] = GroupState.FOCUSED
 
     text: str = ""
 
     for group, status in existing_groups.items():
         match status:
-            case "occupied":
-                text += f"""<span fgcolor='#B6AFC9'> {group} </span>"""
-            case "empty":
-                text += f"""<span fgcolor='#54546D'> {group} </span>"""
-            case "focused":
-                text += f"""<span fgcolor='#1d1d16' bgcolor='#B6AFC9' line_height='2'> {group} </span>"""
+            case GroupState.OCCUPIED:
+                text += f"""<span fgcolor='{colors["primary"]}'> {group} </span>"""
+            case GroupState.EMPTY:
+                text += f"""<span fgcolor='{colors["secondary"]}'> {group} </span>"""
+            case GroupState.FOCUSED:
+                text += f"""<span fgcolor='{colors["background"]}' bgcolor='{colors["primary"]}' line_height='2'> {group} </span>"""
 
-    output = open("/tmp/qtile-groups.txt", "w", encoding="utf-8")
-    output.write(text)
-    output.close()
+    with open("/tmp/qtile-groups.txt", "w", encoding="utf-8") as output:
+        output.write(text)
+        output.close()
 
     subprocess.call(["pkill -RTMIN+8 waybar"], shell=True)
+```
+
+And then in the Waybar config:
+
+```json
+"custom/qtile-groups": {
+    "exec": "cat /tmp/qtile-groups.txt",
+    "interval": "once",
+    "signal": 8,
+    "tooltip": false
+}
+```
+
+### Send window title to Waybar
+
+Qtile:
+```python
+@hook.subscribe.focus_change
+def update_window_title_waybar() -> None:
+    """Update Waybar of focused window title"""
+    window_title: str = (
+        "" if qtile.current_window is None else qtile.current_window.name  # type: ignore[attr-defined]
+    )
+
+    with open("/tmp/qtile-window-title.txt", "w", encoding="utf-8") as output:
+        output.write(f"<span fgcolor='{colors["text"]}'>{window_title}</span>")
+        output.close()
+
+    subprocess.call(["pkill -RTMIN+9 waybar"], shell=True)
+```
+
+Waybar:
+```json
+"custom/qtile-window-title": {
+    "exec": "cat /tmp/qtile-window-title.txt",
+    "interval": "once",
+    "signal": 9,
+    "max-length": 50,
+    "tooltip": false
+}
+```
+
+### Send current layout to Waybar
+
+Qtile:
+```python
+@hook.subscribe.startup_complete
+@hook.subscribe.layout_change
+def update_layout_waybar(*_args) -> None:
+    """Update Waybar of current layout"""
+    try:
+        current_layout = qtile.current_layout.name  # type: ignore[attr-defined]
+    except AttributeError:
+        current_layout = ""
+
+    with open("/tmp/qtile-layout.txt", "w", encoding="utf-8") as output:
+        output.write(f"<span fgcolor='{colors["primary"]}'>{current_layout}</span>")
+        output.close()
+
+    subprocess.call(["pkill -RTMIN+7 waybar"], shell=True)
+```
+
+Waybar:
+```json
+"custom/qtile-layout": {
+    "exec": "cat /tmp/qtile-layout.txt",
+    "interval": "once",
+    "signal": 7,
+    "tooltip": false
+}
 ```
