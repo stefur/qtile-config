@@ -72,6 +72,43 @@ wl_input_rules = {
     "type:touchpad": InputConfig(drag=True, tap=True, natural_scroll=True),
 }
 
+home = os.path.expandvars("$HOME")
+wallpapers = os.listdir(f"{home}/wallpapers")
+random_wallpaper = random.choice(wallpapers)
+path_to_wallpaper = os.path.join(f"{home}/wallpapers", random_wallpaper)
+
+startup_items = [
+    f"waybar -c {home}/.config/waybar/config-qtile &",
+    "wlsunset -l 59.6 -L 18.1 &",
+    f"swaybg -m fill -i {path_to_wallpaper} &",
+    f"convert {path_to_wallpaper} -blur 16x8 /tmp/lock_img.jpg &",
+    "syncthing &",
+    "pipewire &",
+    "mako &",
+    "kanshi &",
+    "swayidle -w timeout 300 'lock.sh' timeout 600 'wlopm --off '*'' resume 'wlopm --on '*'' timeout 900 'loginctl suspend' before-sleep 'lock.sh' &",
+    "gpg-connect-agent &",
+    "/usr/libexec/polkit-gnome-authentication-agent-1 &",
+    "dbus-update-activation-environment DISPLAY",
+]
+
+
+@hook.subscribe.startup_once
+def autostart() -> None:
+    """Autostart things when qtile starts"""
+
+    subprocess.call(["brightnessctl set 20%"], shell=True)
+
+    for item in startup_items:
+        with subprocess.Popen(item, shell=True) as process:
+            hook.subscribe.shutdown(process.terminate)
+
+
+class GroupState(Enum):
+    EMPTY = 1
+    OCCUPIED = 2
+    FOCUSED = 3
+
 
 @hook.subscribe.focus_change
 @hook.subscribe.client_killed
