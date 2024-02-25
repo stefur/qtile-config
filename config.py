@@ -372,7 +372,7 @@ def window_to_screen(self: Qtile, direction: str) -> None:
             case "previous":
                 group = self.screens[screen_i - 1].group.name
 
-    self.current_window.togroup(group)
+        self.current_window.togroup(group)
 
 
 # Layouts
