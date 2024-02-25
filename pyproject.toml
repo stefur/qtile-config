@@ -1,0 +1,18 @@
+[project]
+name = "qtile-config"
+version = "0.1.0"
+description = "Config for Wayland"
+authors = [
+    { name = "stefur", email = "stefan@furne.net" }
+]
+dependencies = [
+]
+readme = "README.md"
+requires-python = ">= 3.11"
+
+[tool.rye]
+managed = true
+virtual = true
+dev-dependencies = [
+    "qtile>=0.24.0",
+]
