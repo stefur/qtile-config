@@ -3,36 +3,36 @@
 from __future__ import annotations
 
 import os
+import random
 import subprocess
-
+from enum import Enum
 from typing import TYPE_CHECKING
 
+from libqtile import hook, qtile
+from libqtile.backend.base import Window
+from libqtile.backend.wayland import InputConfig
 from libqtile.config import (
-    Key,
-    Screen,
-    Group,
-    Drag,
     Click,
+    Drag,
+    DropDown,
+    Group,
+    Key,
     Match,
     ScratchPad,
-    DropDown,
+    Screen,
 )
-from libqtile.lazy import lazy
-from libqtile import hook, qtile
-from libqtile.backend.wayland import InputConfig
-
-from libqtile.layout.max import Max
-from libqtile.layout.xmonad import MonadTall
-from libqtile.layout.tree import TreeTab
-from libqtile.layout.floating import Floating
-
-from libqtile.backend.base import Window
 from libqtile.group import _Group
+from libqtile.layout.floating import Floating
+from libqtile.layout.max import Max
+from libqtile.layout.tree import TreeTab
+from libqtile.layout.xmonad import MonadTall
+from libqtile.lazy import lazy
 
 from colors import colors
 
 if TYPE_CHECKING:
     from typing import Any
+
     from libqtile.core.manager import Qtile
 
 assert qtile is not None, "This should never be None."
@@ -241,6 +241,7 @@ def assign_app_group(client: Window) -> None:
 @hook.subscribe.client_new
 def toggle_fullscreen_off(client: Window) -> None:
     """Toggle fullscreen off in case there's any window fullscreened in the group"""
+
     try:
         group = client.group
     except AttributeError:
@@ -504,10 +505,13 @@ keys = [
     Key([MOD, "control"], "Return", lazy.spawn(FILE_MANAGER)),
     Key([MOD], "c", lazy.function(spawn_or_focus, "signal-desktop")),
     Key([MOD], "r", lazy.spawn(LAUNCHER)),
-    Key([MOD], "d", lazy.function(spawn_or_focus, "Discord")),
-    Key([MOD], "s", lazy.function(spawn_or_focus, "spotify")),
+    Key(
+        [MOD], "d", lazy.function(spawn_or_focus, "flatpak run com.discordapp.Discord")
+    ),
+    Key([MOD], "s", lazy.function(spawn_or_focus, "flatpak run com.spotify.Client")),
     Key([MOD], "g", lazy.function(spawn_or_focus, "steam-native")),
     Key([MOD], "p", lazy.spawn("pass.sh")),
+    Key([MOD], "o", lazy.spawn("otp.sh")),
     Key([MOD, "control"], "m", lazy.spawn("mount.sh")),
     Key([MOD], "e", lazy.spawn("emojis.sh")),
     Key([MOD, "shift"], "p", lazy.spawn("screenshot.sh")),
@@ -520,16 +524,12 @@ keys = [
     Key([MOD], "9", lazy.spawn(f"{MUSIC_CTRL}Next")),
     Key([MOD], "7", lazy.spawn(f"{MUSIC_CTRL}Previous")),
     # Media volume keys
-    Key([], "XF86AudioMute", lazy.widget["volumectrl"].adjust_volume("mute")),
+    Key([], "XF86AudioMute", lazy.spawn("pactl set-sink-mute 0 toggle")),
     Key(
-        [MOD, "shift"], "m", lazy.widget["volumectrl"].adjust_volume("mute")
+        [MOD, "shift"], "m", lazy.spawn("pactl set-sink-mute 0 toggle")
     ),  # Extra keybind
-    Key(
-        [], "XF86AudioLowerVolume", lazy.widget["volumectrl"].adjust_volume("decrease")
-    ),
-    Key(
-        [], "XF86AudioRaiseVolume", lazy.widget["volumectrl"].adjust_volume("increase")
-    ),
+    Key([], "XF86AudioLowerVolume", lazy.spawn("pactl set-sink-volume 0 -5%")),
+    Key([], "XF86AudioRaiseVolume", lazy.spawn("pactl set-sink-volume 0 +5%")),
     # Brightness controll
     Key([], "XF86MonBrightnessDown", lazy.spawn("brightnessctl set 5%-")),
     Key([], "XF86MonBrightnessUp", lazy.spawn("brightnessctl set +5%")),
@@ -604,7 +604,7 @@ mouse = [
 screens = [Screen()]
 
 # Misc
-dgroups_key_binder = None
+dgroups_key_binder = None  # type: ignore[var-annotated]
 dgroups_app_rules = []  # type: list
 follow_mouse_focus = True
 bring_front_click = True
