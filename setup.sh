@@ -1,5 +1,4 @@
 #!/bin/bash
-# Symlink everything, create folders if necessary
 
 qtileconfig=$(pwd)
 

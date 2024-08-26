@@ -81,13 +81,11 @@ startup_items = [
     f"waybar -c {home}/.config/waybar/config-qtile &",
     "wlsunset -l 59.6 -L 18.1 &",
     f"swaybg -m fill -i {path_to_wallpaper} &",
-    f"convert {path_to_wallpaper} -blur 16x8 /tmp/lock_img.jpg &",
-    "syncthing &",
-    "pipewire &",
+    f"magick {path_to_wallpaper} -blur 16x8 /tmp/lock_img.jpg &",
     "mako &",
     "kanshi &",
-    "swayidle -w timeout 300 'lock.sh' timeout 600 'wlopm --off '*'' resume 'wlopm --on '*'' timeout 900 'loginctl suspend' before-sleep 'lock.sh' &",
-    "gpg-connect-agent &",
+    "swayidle -w timeout 300 'lock.sh' timeout 600 'wlopm --off '*'' resume 'wlopm --on '*'' timeout 900 'sudo zzz' &",
+    "gpg-connect-agent --daemon &",
     "/usr/libexec/polkit-gnome-authentication-agent-1 &",
     "dbus-update-activation-environment DISPLAY",
 ]
@@ -102,6 +100,12 @@ def autostart() -> None:
     for item in startup_items:
         with subprocess.Popen(item, shell=True) as process:
             hook.subscribe.shutdown(process.terminate)
+
+
+# This is just a temporary workaround to make Waybar align nicely on startup
+@hook.subscribe.client_managed
+def client_managed(_client):
+    qtile.core._current_output.organise_layers()  # type: ignore[attr-defined]
 
 
 class GroupState(Enum):
@@ -149,12 +153,28 @@ def update_groups_waybar(*_args) -> None:
     subprocess.call(["pkill -RTMIN+8 waybar"], shell=True)
 
 
+@hook.subscribe.client_name_updated
+@hook.subscribe.layout_change
 @hook.subscribe.focus_change
-def update_window_title_waybar() -> None:
+def update_window_title_waybar(*args) -> None:
     """Update Waybar of focused window title"""
+
+    # Unpack a client from args (ignore layouts and groups)
+    client: Window = args[0] if len(args) == 1 else None
+
+    # Ignore any clients that are not the current window
+    if client and client.wid != qtile.current_window.wid:  # type: ignore[attr-defined]
+        return
+
     window_title: str = (
         "" if qtile.current_window is None else qtile.current_window.name  # type: ignore[attr-defined]
     )
+
+    # Count the windows for max layout
+    if qtile.current_layout.name == layout_names["max"]:  # type: ignore[attr-defined]
+        wincount = len(qtile.current_group.windows)  # type: ignore[attr-defined]
+
+        window_title = f"({wincount}) {window_title}" if wincount > 1 else window_title
 
     with open("/tmp/qtile-window-title.txt", "w", encoding="utf-8") as output:
         output.write(f"<span fgcolor='{colors["text"]}'>{window_title}</span>")
@@ -167,10 +187,8 @@ def update_window_title_waybar() -> None:
 @hook.subscribe.layout_change
 def update_layout_waybar(*_args) -> None:
     """Update Waybar of current layout"""
-    try:
-        current_layout = qtile.current_layout.name  # type: ignore[attr-defined]
-    except AttributeError:
-        current_layout = ""
+
+    current_layout = qtile.current_layout.name or ""  # type: ignore[attr-defined]
 
     with open("/tmp/qtile-layout.txt", "w", encoding="utf-8") as output:
         output.write(f"<span fgcolor='{colors["primary"]}'>{current_layout}</span>")
@@ -201,24 +219,6 @@ def center_window() -> None:
     try:
         if qtile.current_window is not None:  # type: ignore[attr-defined]
             qtile.current_window.center()  # type: ignore[attr-defined]
-    except AttributeError:
-        return
-
-
-@hook.subscribe.layout_change
-def max_win_count(new_layout: MonadTall | Max | TreeTab, group: _Group) -> None:
-    """Displays the window counter if the max layout is used"""
-    del group  # Unused parameter
-
-    try:
-        wincount_widget = qtile.widgets_map.get("windowcount")  # type: ignore[attr-defined]
-
-        if new_layout.name == layout_names["max"]:
-            wincount_widget.foreground = colors["primary"]
-            wincount_widget.padding = 0
-        else:
-            wincount_widget.foreground = colors["background"]
-            wincount_widget.padding = -12
     except AttributeError:
         return
 
@@ -578,7 +578,7 @@ groups.append(
             DropDown("terminal", TERMINAL, **scratchpad_conf),
             DropDown(
                 "newsboat",
-                f"""{TERMINAL} newsboat -C=~/.config/newsboat/config 
+                f"""{TERMINAL} newsboat -C=~/.config/newsboat/config
                 -u=~/sync/files/newsboat/urls -c=~/sync/files/newsboat/cache.db""",
                 **scratchpad_conf,
             ),

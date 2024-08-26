@@ -3,7 +3,7 @@ Defining colors
 """
 
 colors = {
-    "primary": "#B6AFC9", 
+    "primary": "#B6AFC9",
     "secondary": "#54546D",
     "background": "#1D1D16",
     "text": "#D9E0EE",
