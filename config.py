@@ -78,7 +78,7 @@ random_wallpaper = random.choice(wallpapers)
 path_to_wallpaper = os.path.join(f"{home}/wallpapers", random_wallpaper)
 
 startup_items = [
-    f"waybar -c {home}/.config/waybar/config-qtile &",
+    f"waybar -c {home}/.config/waybar/config-qtile.jsonc &",
     "wlsunset -l 59.6 -L 18.1 &",
     f"swaybg -m fill -i {path_to_wallpaper} &",
     f"magick {path_to_wallpaper} -blur 16x8 /tmp/lock_img.jpg &",

@@ -1,0 +1,159 @@
+{
+    "modules-left": [
+        "custom/qtile-groups",
+        "custom/spacer",
+        "custom/qtile-layout",
+        "custom/spacer",
+        "custom/qtile-window-title"
+    ],
+    "modules-right": [
+        "custom/spotify",
+        "tray",
+        "bluetooth",
+        "idle_inhibitor",
+        "battery",
+        "network#vpn",
+        "network#wifi",
+        "pulseaudio",
+        "clock"
+    ],
+    "custom/spacer": {
+        "format": " ",
+        "tooltip": false
+    },
+    "custom/qtile-groups": {
+        "exec": "cat /tmp/qtile-groups.txt",
+        "interval": "once",
+        "signal": 8,
+        "tooltip": false
+    },
+    "custom/qtile-layout": {
+        "exec": "cat /tmp/qtile-layout.txt",
+        "interval": "once",
+        "signal": 7,
+        "tooltip": false
+    },
+    "custom/qtile-window-title": {
+        "exec": "cat /tmp/qtile-window-title.txt",
+        "interval": "once",
+        "max-length": 50,
+        "signal": 9,
+        "tooltip": false
+    },
+    "clock": {
+        "format": "{:%H:%M}",
+        "tooltip-format": "{:%e %B (%A) \nWeek %V}",
+        "interval": 60
+    },
+    "custom/spotify": {
+        "format": "<span color='#9CABCA'>{icon}</span> {}",
+        "format-icons": {
+            "Playing": "󰐊",
+            "Paused": "󰏤"
+        },
+        "exec": "lizzy --mediaplayer 'spotify' --autotoggle",
+        "return-type": "json",
+        "max-length": 45,
+        "on-click": "callbacks.sh playpause",
+        "on-click-right": "callbacks.sh nextsong",
+        "tooltip": false
+    },
+    "battery": {
+        "bat": "BAT0",
+        "format": "{icon}",
+        "format-charging": "{icon}\udb85\udc0b",
+        "format-plugged": "{icon}\udb81\udea5",
+        "format-not-charging": "{icon}\udb81\udea5",
+        "format-icons": [
+            "\udb80\udc8e",
+            "\udb80\udc7a",
+            "\udb80\udc7b",
+            "\udb80\udc7c",
+            "\udb80\udc7d",
+            "\udb80\udc7e",
+            "\udb80\udc7f",
+            "\udb80\udc80",
+            "\udb80\udc81",
+            "\udb80\udc82",
+            "\udb80\udc79"
+        ],
+        "interval": 120,
+        "states": {
+            "warning": 20,
+            "critical": 10
+        },
+        "tooltip-format": "{capacity}% \n{timeTo}"
+    },
+    "network#vpn": {
+        "interface": "wg0",
+        "format": "\udb80\udf3e",
+        "format-linked": "\udb82\udcee",
+        "format-disconnected": "",
+        "on-click": "pkexec wg-quick down wg0",
+        "tooltip-format": "{ipaddr}"
+    },
+    "network#wifi": {
+        "format-icons": [
+            "\udb82\udd2f",
+            "\udb82\udd1f",
+            "\udb82\udd22",
+            "\udb82\udd25",
+            "\udb82\udd28"
+        ],
+        "format-wifi": "{icon}",
+        "interface": "wl*",
+        "format-linked": "\udb82\udd2d",
+        "format-disconnected": "\udb82\udd2e",
+        "on-click": "foot --app-id='iwctl' iwctl",
+        "on-click-right": "wifi.sh",
+        "on-click-middle": "pkexec wg-quick up wg0",
+        "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}"
+    },
+    "tray": {
+        "icon-size": 18,
+        "spacing": 10
+    },
+    "idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "\udb80\udd76",
+            "deactivated": "\udb81\udeca"
+        }
+    },
+    "pulseaudio": {
+        "format": "{icon}",
+        "tooltip-format": "{volume}%",
+        "format-muted": "\udb83\ude08",
+        "format-icons": {
+            "default": [
+                "\udb81\udd7f",
+                "\udb81\udd80",
+                "\udb81\udd7e"
+            ]
+        },
+        "on-click": "pactl set-sink-mute 0 toggle",
+        "on-click-right": "pavucontrol"
+    },
+    "river/tags": {
+        "num-tags": 6
+    },
+    "river/window": {
+        "tooltip": false,
+        "max-length": 75
+    },
+    "river/mode": {
+        "format": "| {} |"
+    },
+    "bluetooth": {
+        "format": "\udb80\udcaf",
+        "format-off": "\udb80\udcb2",
+        "format-connected": "\udb80\udcb1",
+        "format-connected-battery": "\udb80\udcb1 {device_alias} {device_battery_percentage}%",
+        "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
+        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
+        "on-click": "foot --app-id='bluetoothctl' bluetoothctl",
+        "on-click-right": "bluetooth.sh"
+    }
+}
